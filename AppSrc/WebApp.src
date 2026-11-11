@@ -1,4 +1,8 @@
-﻿Use AllWebAppClasses.pkg
+﻿// C:\DataFlex Projects\FutbolWebApp\AppSrc\WebApp.src
+// WebApp.src
+//
+
+Use AllWebAppClasses.pkg
 Use cConnection.pkg
 Use cWebMenuItem.pkg
 
@@ -12,8 +16,7 @@ Object oWebApp is a cWebApp
     Set psTheme to "Df_Material"
     Set peAlignView to alignCenter
     
-    // It is important to set this so that all views will default
-    // to drill down style views.
+    // Configuración para vistas drilldown
     Set peApplicationStyle to wvsDrillDown   
     Set peApplicationStateMode to asmHistoryAndUrls 
     Set psEncryptPassword to "=(a}CY&E8d/tws:.g/kp79u|{1`x%%evwh2u0U`V"
@@ -54,7 +57,7 @@ Object oWebApp is a cWebApp
                     Set psCaption to C_$View
 
                     Object oSelectLigaItem1 is a cWebMenuItem
-                        Set psCaption to "SelectLiga"
+                        Set psCaption to "Ligas"
                         WebRegisterPath ntNavigateBegin oSelectLiga
 
                         Procedure OnClick
@@ -64,7 +67,7 @@ Object oWebApp is a cWebApp
                     End_Object
 
                     Object oSelectEquipoItem1 is a cWebMenuItem
-                        Set psCaption to "SelectEquipo"
+                        Set psCaption to "Equipos"
                         WebRegisterPath ntNavigateBegin oSelectEquipo
 
                         Procedure OnClick
@@ -74,7 +77,7 @@ Object oWebApp is a cWebApp
                     End_Object
 
                     Object oSelectJugadorItem1 is a cWebMenuItem
-                        Set psCaption to "SelectJugador"
+                        Set psCaption to "Jugadores"
                         WebRegisterPath ntNavigateBegin oSelectJugador
 
                         Procedure OnClick
@@ -84,7 +87,7 @@ Object oWebApp is a cWebApp
                     End_Object
 
                     Object oSelectEntrenadorItem1 is a cWebMenuItem
-                        Set psCaption to "SelectEntrenador"
+                        Set psCaption to "Entrenadores"
                         WebRegisterPath ntNavigateBegin oSelectEntrenador
 
                         Procedure OnClick
@@ -93,15 +96,6 @@ Object oWebApp is a cWebApp
                         End_Procedure
                     End_Object
 
-                    Object oSelectPosicionItem1 is a cWebMenuItem
-                        Set psCaption to "SelectPosicion"
-                        WebRegisterPath ntNavigateBegin oSelectPosicion
-
-                        Procedure OnClick
-                            Forward Send OnClick
-                            Send NavigatePath
-                        End_Procedure
-                    End_Object
                 End_Object
 
                 Object oSignOut_itm is a cWebMenuItem
@@ -181,13 +175,22 @@ Object oWebApp is a cWebApp
     Use WebResourceManager.wo
     
     Use Dashboard.wo
-    Use SelectLiga.wo
-    Use SelectEquipo.wo
-    Use SelectJugador.wo
-    Use SelectEntrenador.wo
+
+    // Lookup y tablas intermedias N:M (instanciadas antes de los Zooms principales)
     Use SelectPosicion.wo
-    Use ZoomLiga.wo
+    Use ZoomJugadorPosicion.wo
+    Use SelectJugadorPosicion.wo
+
+    // Entidades del modelo jerárquico
+    Use ZoomJugador.wo
+    Use SelectJugador.wo
+    Use ZoomEntrenador.wo
+    Use SelectEntrenador.wo
     Use ZoomEquipo.wo
+    Use SelectEquipo.wo
+    Use ZoomLiga.wo
+    Use SelectLiga.wo
+    
     Set phoDefaultView to oDashboard
 
 End_Object

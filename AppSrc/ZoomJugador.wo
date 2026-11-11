@@ -134,6 +134,27 @@ Object oZoomJugador is a cWebView
                 Send RefreshRecord
             End_Procedure
         End_Object
+
+        // Boton para gestionar las posiciones del jugador activo
+        Object oPosicionesBtn is a cWebMenuItem
+            Set psCaption to "Posiciones"
+            Set peActionDisplay to adMenu
+
+            WebRegisterPath ntNavigateForward oSelectJugadorPosicion
+
+            Procedure OnClick
+                Send NavigateForward of oSelectJugadorPosicion Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                Move True to NavigateData.bReadOnly
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
     End_Object
 
     Procedure SetActionButtons
@@ -149,14 +170,17 @@ Object oZoomJugador is a cWebView
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
         WebSet pbRender of oDeleteBtn to False
+        WebSet pbRender of oPosicionesBtn to False
 
         If (NavigateData.bReadOnly) Begin
             WebSet pbRender of oEditBtn to True
+            WebSet pbRender of oPosicionesBtn to bHasRecord
         End
         Else Begin
             WebSet pbRender of oSaveBtn to True
             WebSet pbRender of oCancelChangesBtn to True
             WebSet pbRender of oDeleteBtn to bHasRecord
+            WebSet pbRender of oPosicionesBtn to bHasRecord
         End
     End_Procedure
 

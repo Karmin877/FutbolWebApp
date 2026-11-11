@@ -1,0 +1,184 @@
+﻿// C:\DataFlex Projects\FutbolWebApp\AppSrc\SelectJugadorPosicion.wo
+// SelectJugadorPosicion
+//
+
+Use cWebView.pkg
+Use cWebList.pkg
+Use cWebMenuGroup.pkg
+Use cWebMenuItem.pkg
+Use cWebColumnButton.pkg
+Use cWebColumn.pkg
+
+Use cligaDataDictionary.dd
+Use cequipoDataDictionary.dd
+Use cjugadorDataDictionary.dd
+Use cposicionDataDictionary.dd
+Use cjugadorposicionDataDictionary.dd
+
+Object oSelectJugadorPosicion is a cWebView
+    Set psCaption to "Posiciones del Jugador"
+    Set peWebViewStyle to wvsDrilldown
+    Set peViewType to vtSelect
+    Set piColumnCount to 12
+    Set pbShowCaption to False
+    Set piMaxWidth to 1024
+
+    Object oliga_DD is a cligaDataDictionary
+    End_Object 
+
+    Object oequipo_DD is a cequipoDataDictionary
+        Set DDO_Server to oliga_DD
+    End_Object 
+
+    Object ojugador_DD is a cjugadorDataDictionary
+        Set DDO_Server to oequipo_DD
+    End_Object 
+
+    Object oposicion_DD is a cposicionDataDictionary
+    End_Object 
+
+    Object ojugadorposicion_DD is a cjugadorposicionDataDictionary
+        Set DDO_Server to ojugador_DD
+        Set DDO_Server to oposicion_DD
+        // Restringe para listar unicamente las posiciones asignadas a este jugador
+        Set Constrain_File to jugador.File_Number
+    End_Object 
+
+    Set Main_DD to ojugadorposicion_DD
+    Set Server  to ojugadorposicion_DD
+
+    Object oList is a cWebList
+        Set piColumnSpan to 0
+        Set psCSSClass to "MobileList"
+        Set pbServerOnRowClick to True
+        Set pbFillHeight to True
+        Set pbShowHeader to False
+        Set piSortColumn to 0
+
+        Object oposicionNombre is a cWebColumn
+            Entry_Item posicion.Nombre
+            Set psCaption to "Posición"
+            Set piWidth to 500
+        End_Object 
+
+        Object ojugadorNombre is a cWebColumn
+            Entry_Item jugador.Nombre
+            Set psCaption to "Jugador"
+            Set piWidth to 500
+        End_Object 
+
+        Object oDetailButton is a cWebColumnButton
+            Set psCaption to "btn"
+            Set piWidth to 45
+            Set pbFixedWidth to True
+            Set pbResizable to False
+            Set piListRowSpan to 1
+            Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
+            Set peAlign to alignRight
+
+            WebRegisterPath ntNavigateForward oZoomJugadorPosicion
+
+            Procedure OnClick
+                Send NavigateForward of oZoomJugadorPosicion Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                Move True to NavigateData.bReadOnly
+                
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object 
+
+        WebRegisterPath ntNavigateForward oZoomJugadorPosicion
+
+        Procedure OnRowClick String sRowId
+            tWebNavigateData NavigateData
+            Get GetNavigateData to NavigateData
+
+            Case Begin
+                Case (NavigateData.eNavigateType = nfFromChild)
+                    Send NavigateClose Self
+                    Case Break
+
+                Case (NavigateData.eNavigateType = nfFromMain)
+                    Send NavigateClose Self
+                    Case Break
+
+                Case Else
+                    Send NavigateForward of oZoomJugadorPosicion Self
+            Case End
+        End_Procedure
+
+        Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+            Integer iElements
+            Move True to NavigateData.bReadOnly
+            
+            Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+            Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+            Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+        End_Procedure
+
+    End_Object 
+
+    Object oActionGroup is a cWebMenuGroup
+
+        Object oSearch is a cWebMenuItem
+            Set psCSSClass to "WebPromptMenuItem"
+            Set psCaption to "Search"
+
+            Procedure OnClick
+                Send Search of oList
+            End_Procedure
+        End_Object 
+
+        Object oNewButton is a cWebMenuItem
+            Set psCSSClass to "WebClearMenuItem"
+            Set psCaption to "New"
+
+            WebRegisterPath ntNavigateForward oZoomJugadorPosicion
+
+            Procedure OnClick
+                Send NavigatePath
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                Move True to NavigateData.bNewRecord
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object 
+    End_Object 
+
+    Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        String sJugadorID
+        Integer iIndex iCount
+
+        Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
+
+        Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+        For iIndex from 0 to (iCount - 1)
+            If (NavigateData.NamedValues[iIndex].sName = "JugadorID") Begin
+                Move NavigateData.NamedValues[iIndex].sValue to sJugadorID
+            End
+        Loop
+
+        If (sJugadorID <> "") Begin
+            Clear jugador
+            Move sJugadorID to jugador.ID
+            Send Find of ojugador_DD EQ 1
+            
+            // Reconstruye el filtro DDO para refrescar la lista con este jugador especifico
+            Send Rebuild_Constraints of ojugadorposicion_DD
+        End
+
+        WebSet pbRender of oNewButton to True
+        WebSet pbRender of oDetailButton to True
+    End_Procedure
+
+End_Object

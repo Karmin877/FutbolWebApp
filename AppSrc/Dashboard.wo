@@ -10,6 +10,7 @@ Use cWebMenuItem.pkg
 Use cWebLabel.pkg
 Use cWebList.pkg
 Use cWebColumn.pkg
+Use cposicionDataDictionary.dd
 
 Object oDashboard is a cWebView
 

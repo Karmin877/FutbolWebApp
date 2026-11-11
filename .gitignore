@@ -19,4 +19,22 @@ AppHtml/Cache/*
 *.bak
 *.tmp
 ~*
+
+cat << 'EOF' >> .gitignore
+
+# DataFlex generated and cache files
+*.cch
+*.dep
+*.prn
+*.pwo
+*.x64.pkd
+*.log
+Data/*.k*
+Data/webappsession.*
+Data/webappserverprops.*
+Data/*.dat
+Data/*.vld
+Data/*.tag
+EOF
+
 IdeSrc/
