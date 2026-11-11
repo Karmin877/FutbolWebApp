@@ -11,6 +11,7 @@ Open liga
 Open equipo
 Open jugador
 Open entrenador
+Open posicion
 
 Object oDashboard is a cWebView
     Set piMaxWidth to 1024
@@ -62,6 +63,18 @@ Object oDashboard is a cWebView
         Clear entrenador
         Repeat
             Find gt entrenador by 1
+            If (not(Found)) Break
+            Increment iCount
+        Until False
+        Function_Return iCount
+    End_Function
+
+    Function CountPosiciones Returns Integer
+        Integer iCount
+        Move 0 to iCount
+        Clear posicion
+        Repeat
+            Find gt posicion by 1
             If (not(Found)) Break
             Increment iCount
         Until False
@@ -155,7 +168,7 @@ Object oDashboard is a cWebView
 
             Object oTileJugadores is a cWebHtmlBox
                 Set pbServerOnClick to True
-                Set piColumnSpan to 6
+                Set piColumnSpan to 4
                 Set piColumnIndex to 0
                 Set psCSSClass to "Tile DarkAlternate"
                 Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Jugadores</div><div class="Tile_Subtitle">0 registrados</div></div>'
@@ -180,8 +193,8 @@ Object oDashboard is a cWebView
 
             Object oTileEntrenadores is a cWebHtmlBox
                 Set pbServerOnClick to True
-                Set piColumnSpan to 6
-                Set piColumnIndex to 6
+                Set piColumnSpan to 4
+                Set piColumnIndex to 4
                 Set psCSSClass to "Tile DarkAlternate"
                 Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Entrenadores</div><div class="Tile_Subtitle">0 registrados</div></div>'
 
@@ -203,17 +216,52 @@ Object oDashboard is a cWebView
                 End_Procedure
             End_Object
 
+            Object oTilePosiciones is a cWebHtmlBox
+                Set pbServerOnClick to True
+                Set piColumnSpan to 4
+                Set piColumnIndex to 8
+                Set psCSSClass to "Tile DarkAlternate"
+                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Posiciones</div><div class="Tile_Subtitle">0 registradas</div></div>'
+
+                WebRegisterPath ntNavigateForward oSelectPosicion
+
+                Procedure RefreshTile
+                    Integer iTotal
+                    String sHtml
+                    Get CountPosiciones of oDashboard to iTotal
+                    Move ('<div class="WebCon_Sizer" data-ServerOnClick="openview">' + ;
+                          '<div class="Tile_Title">Posiciones</div>' + ;
+                          '<div class="Tile_Subtitle">' + String(iTotal) + ' registradas</div>' + ;
+                          '</div>') to sHtml
+                    Send UpdateHTML sHtml
+                End_Procedure
+
+                Procedure OnClick String sId String sParam
+                    Send NavigatePath
+                End_Procedure
+            End_Object
+
         End_Object
 
     End_Object
 
-    Procedure OnShow
-        Forward Send OnShow
+    Procedure RefreshAllTiles
         Send RefreshTile of (oWelcomeTile(oTiles_grp(oWebMainPanel(Self))))
         Send RefreshTile of (oTileLigas(oTiles_grp(oWebMainPanel(Self))))
         Send RefreshTile of (oTileEquipos(oTiles_grp(oWebMainPanel(Self))))
         Send RefreshTile of (oTileJugadores(oTiles_grp(oWebMainPanel(Self))))
         Send RefreshTile of (oTileEntrenadores(oTiles_grp(oWebMainPanel(Self))))
+        Send RefreshTile of (oTilePosiciones(oTiles_grp(oWebMainPanel(Self))))
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
+        Send RefreshAllTiles
+    End_Procedure
+
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+        Send RefreshAllTiles
     End_Procedure
 
 End_Object

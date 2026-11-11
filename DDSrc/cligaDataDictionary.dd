@@ -1,4 +1,5 @@
-﻿Use DataDict.pkg
+﻿// DDSrc/cligaDataDictionary.dd
+Use DataDict.pkg
 
 Open liga
 Open equipo
@@ -14,8 +15,41 @@ Class cligaDataDictionary is a DataDictionary
         Set Foreign_Field_Option DD_KEYFIELD DD_NOPUT to True
         Set Foreign_Field_Option DD_KEYFIELD DD_FINDREQ to True
         Set Foreign_Field_Option DD_INDEXFIELD DD_NOPUT to True
-        Set Foreign_Field_Option DD_DEFAULT DD_DISPLAYONLY to True
+        Set Foreign_Field_Option DD_INDEXFIELD DD_FINDREQ to True
+        Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
+
+    // Validacion para impedir borrar ligas que contengan equipos registrados
+    Function Validate_Delete Returns Integer
+        Integer iRet iLigaID
+        Boolean bTieneEquipos
+        Forward Get Validate_Delete to iRet
+        If (iRet <> 0) Function_Return iRet
+
+        Move liga.ID to iLigaID
+        Move False to bTieneEquipos
+
+        // Comprobacion en equipo (Index.2 / campo LigaID)
+        Clear equipo
+        Move iLigaID to equipo.LigaID
+        Find ge equipo by Index.2
+        While (Found and not(bTieneEquipos))
+            If (equipo.LigaID = iLigaID) Begin
+                Move True to bTieneEquipos
+            End
+            Else Begin
+                Break
+            End
+            Find gt equipo by Index.2
+        Loop
+
+        If (bTieneEquipos) Begin
+            Send UserError "No se puede eliminar la liga porque tiene equipos asignados. Elimine o reasigne los equipos primero." "Restricción de Integridad"
+            Function_Return 1
+        End
+
+        Function_Return 0
+    End_Function
 
 End_Class
