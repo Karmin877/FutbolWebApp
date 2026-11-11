@@ -85,10 +85,6 @@ Object oSelectEquipo is a cWebView
             Get GetNavigateData to NavigateData
 
             Case Begin
-                Case (NavigateData.eNavigateType = nfFromParent)
-                    Send NavigateForward of oSelectJugador Self
-                    Case Break
-
                 Case (NavigateData.eNavigateType = nfFromChild)
                     Send NavigateClose Self
                     Case Break
@@ -103,7 +99,13 @@ Object oSelectEquipo is a cWebView
         End_Procedure
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+            Integer iElements
             Move True to NavigateData.bReadOnly
+
+            // Pasamos el EquipoID seleccionado hacia SelectJugador
+            Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+            Move "EquipoID" to NavigateData.NamedValues[iElements].sName
+            Move equipo.ID  to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
