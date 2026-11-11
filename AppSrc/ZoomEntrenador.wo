@@ -7,13 +7,15 @@ Use cWebPanel.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
 Use cWebForm.pkg
+Use cWebButton.pkg
 
 Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 Use centrenadorDataDictionary.dd
 
-Open entrenador
+Open liga
 Open equipo
+Open entrenador
 
 Object oZoomEntrenador is a cWebView
     Set piColumnCount to 12
@@ -46,12 +48,12 @@ Object oZoomEntrenador is a cWebView
             If (equipo.ID <> 0) Begin
                 Move equipo.ID to entrenador.EquipoID
             End
-            Else If (sEqID <> "") Begin
+            Else If (sEqID <> "" and sEqID <> "0") Begin
                 Move (Integer(sEqID)) to entrenador.EquipoID
             End
         End_Procedure
 
-        // Validacion: impedir guardar si falta asignar un equipo
+        // Validacion: asegurar que tenga un equipo asignado
         Function Validate_Save Returns Integer
             Integer iRet iEqID
             Forward Get Validate_Save to iRet
@@ -86,6 +88,12 @@ Object oZoomEntrenador is a cWebView
             Set psLabel to "ID"
             Set pbReadOnly to True
         End_Object 
+
+        // Campo oculto para mantener sincronizada la FK en el cliente
+        Object oentrenadorEquipoID is a cWebForm
+            Entry_Item entrenador.EquipoID
+            Set pbRender to False
+        End_Object
 
         Object oentrenadorNombre is a cWebForm
             Entry_Item entrenador.Nombre
@@ -125,6 +133,18 @@ Object oZoomEntrenador is a cWebView
                 Send NavigatePath
             End_Procedure
         End_Object 
+
+        // Boton directo visible en panel
+        Object oBtnEliminarDirecto is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "ELIMINAR ESTE ENTRENADOR"
+            Set psCSSClass to "WebButtonAlert"
+
+            Procedure OnClick
+                Send Request_Delete of oZoomEntrenador
+            End_Procedure
+        End_Object
     End_Object 
 
     Object oActionGroup is a cWebMenuGroup
@@ -151,7 +171,7 @@ Object oZoomEntrenador is a cWebView
         Object oDeleteBtn is a cWebMenuItem
             Set psCSSClass to "WebDeleteMenuItem"
             Set psCaption to "Delete"
-            Set peActionDisplay to adMenu
+            Set peActionDisplay to adBoth
 
             Procedure OnClick
                 Send Request_Delete
@@ -171,25 +191,33 @@ Object oZoomEntrenador is a cWebView
 
     Procedure SetActionButtons
         tWebNavigateData NavigateData
-        Boolean bHasRecord
+        Boolean bHasRecord bIsNew
         Handle hoDD
 
         Get Server to hoDD
         Get GetNavigateData to NavigateData
         Get HasRecord of hoDD to bHasRecord
+        Move (NavigateData.bNewRecord) to bIsNew
+
+        If (bIsNew) Begin
+            Move False to bHasRecord
+        End
+        Else Begin
+            If (entrenador.ID <> 0) Move True to bHasRecord
+        End
 
         WebSet pbRender of oEditBtn to False
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
-        WebSet pbRender of oDeleteBtn to False
+        WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oBtnEliminarDirecto to bHasRecord
 
-        If (NavigateData.bReadOnly and not(NavigateData.bNewRecord)) Begin
+        If (NavigateData.bReadOnly and not(bIsNew)) Begin
             WebSet pbRender of oEditBtn to True
         End
         Else Begin
             WebSet pbRender of oSaveBtn to True
             WebSet pbRender of oCancelChangesBtn to True
-            WebSet pbRender of oDeleteBtn to bHasRecord
         End
     End_Procedure
 
@@ -201,7 +229,6 @@ Object oZoomEntrenador is a cWebView
         Send NavigateClose Self
     End_Procedure
 
-    // Sincroniza el equipo elegido en el selector
     Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
         Forward Send OnNavigateBack NavigateData hoInvokingView
 
@@ -210,11 +237,13 @@ Object oZoomEntrenador is a cWebView
             WebSet psEquipoID to (String(equipo.ID))
             Set Field_Changed_Value of oentrenador_DD Field entrenador.EquipoID to equipo.ID
         End
+        Send SetActionButtons
     End_Procedure
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        RowID riEntrenador
         Integer iIndex iCount
-        String sEquipoID
+        String sEquipoID sEntrenadorID
 
         Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
 
@@ -228,16 +257,45 @@ Object oZoomEntrenador is a cWebView
                 End
             Loop
 
-            If (sEquipoID <> "") Begin
+            If (sEquipoID <> "" and sEquipoID <> "0") Begin
                 WebSet psEquipoID to sEquipoID
                 Clear equipo
                 Move (Integer(sEquipoID)) to equipo.ID
                 Send Find of oequipo_DD EQ 1
-
                 Set Field_Changed_Value of oentrenador_DD Field entrenador.EquipoID to (Integer(sEquipoID))
             End
         End
+        Else Begin
+            // Carga por RowId serializado
+            If (NavigateData.sRowId <> "") Begin
+                Move (DeserializeRowID(NavigateData.sRowId)) to riEntrenador
+                If (not(IsNullRowID(riEntrenador))) Begin
+                    Send FindByRowId of oentrenador_DD entrenador.File_Number riEntrenador
+                End
+            End
 
+            // Fallback por EntrenadorID
+            If (not(HasRecord(oentrenador_DD))) Begin
+                Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+                For iIndex from 0 to (iCount - 1)
+                    If (NavigateData.NamedValues[iIndex].sName = "EntrenadorID" or NavigateData.NamedValues[iIndex].sName = "ID") Begin
+                        Move NavigateData.NamedValues[iIndex].sValue to sEntrenadorID
+                    End
+                Loop
+
+                If (sEntrenadorID <> "" and sEntrenadorID <> "0") Begin
+                    Clear entrenador
+                    Move (Integer(sEntrenadorID)) to entrenador.ID
+                    Send Find of oentrenador_DD EQ 1
+                End
+            End
+        End
+
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
         Send SetActionButtons
     End_Procedure
 

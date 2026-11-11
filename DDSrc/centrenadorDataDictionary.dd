@@ -1,4 +1,5 @@
-﻿Use DataDict.pkg
+﻿// DDSrc/centrenadorDataDictionary.dd
+Use DataDict.pkg
 
 Open entrenador
 Open equipo
@@ -18,5 +19,28 @@ Class centrenadorDataDictionary is a DataDictionary
         Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
+
+    // Validacion previa: impedir asignar un equipo que ya tiene otro entrenador asignado
+    Function Validate_Save Returns Integer
+        Integer iRet iEquipoID iEntrenadorID
+        Forward Get Validate_Save to iRet
+        If (iRet <> 0) Function_Return iRet
+
+        Get Field_Current_Value Field entrenador.ID to iEntrenadorID
+        Get Field_Current_Value Field entrenador.EquipoID to iEquipoID
+
+        If (iEquipoID <> 0) Begin
+            // Comprobar mediante Index.3 (uqEntrenadorEquipo) si ya existe otro registro con ese EquipoID
+            Clear entrenador
+            Move iEquipoID to entrenador.EquipoID
+            Find ge entrenador by Index.3
+            If (Found and entrenador.EquipoID = iEquipoID and entrenador.ID <> iEntrenadorID) Begin
+                Send UserError "Este equipo ya tiene asignado otro entrenador. Cada equipo solo puede tener un entrenador." "Restricción de Negocio"
+                Function_Return 1
+            End
+        End
+
+        Function_Return 0
+    End_Function
 
 End_Class

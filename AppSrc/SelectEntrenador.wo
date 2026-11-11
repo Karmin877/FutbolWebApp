@@ -13,6 +13,10 @@ Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 Use centrenadorDataDictionary.dd
 
+Open liga
+Open equipo
+Open entrenador
+
 Object oSelectEntrenador is a cWebView
     Set psCaption to "Entrenadores"
     Set peWebViewStyle to wvsDrilldown
@@ -74,13 +78,14 @@ Object oSelectEntrenador is a cWebView
             Set piWidth to 400
         End_Object 
 
+        // Boton para editar / ver detalle del entrenador
         Object oDetailButton is a cWebColumnButton
-            Set psCaption to "btn"
+            Set psCaption to "Editar"
             Set piWidth to 45
             Set pbFixedWidth to True
             Set pbResizable to False
             Set piListRowSpan to 1
-            Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
+            Set psBtnCssClass to "WebButtonIcon WebIcon_Edit"
             Set peAlign to alignRight
 
             WebRegisterPath ntNavigateForward oZoomEntrenador
@@ -90,7 +95,20 @@ Object oSelectEntrenador is a cWebView
             End_Procedure
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
-                Move True to NavigateData.bReadOnly
+                Integer iElements
+                RowID riRowId
+
+                Move False to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
+
+                Move (GetRowId(entrenador.File_Number)) to riRowId
+                If (not(IsNullRowID(riRowId))) Begin
+                    Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+                End
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "EntrenadorID" to NavigateData.NamedValues[iElements].sName
+                Move (String(entrenador.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
 
@@ -115,7 +133,20 @@ Object oSelectEntrenador is a cWebView
         End_Procedure
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
-            Move True to NavigateData.bReadOnly
+            Integer iElements
+            RowID riRowId
+
+            Move False to NavigateData.bNewRecord
+            Move False to NavigateData.bReadOnly
+
+            Move (GetRowId(entrenador.File_Number)) to riRowId
+            If (not(IsNullRowID(riRowId))) Begin
+                Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+            End
+
+            Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+            Move "EntrenadorID" to NavigateData.NamedValues[iElements].sName
+            Move (String(entrenador.ID)) to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
@@ -144,10 +175,11 @@ Object oSelectEntrenador is a cWebView
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
                 Integer iElements
                 Move True to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
 
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "EquipoID" to NavigateData.NamedValues[iElements].sName
-                Move equipo.ID  to NavigateData.NamedValues[iElements].sValue
+                Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
     End_Object 
@@ -165,9 +197,9 @@ Object oSelectEntrenador is a cWebView
             End
         Loop
 
-        If (sEquipoID <> "") Begin
+        If (sEquipoID <> "" and sEquipoID <> "0") Begin
             Clear equipo
-            Move sEquipoID to equipo.ID
+            Move (Integer(sEquipoID)) to equipo.ID
             Send Find of oequipo_DD EQ 1
         End
 
