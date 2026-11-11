@@ -6,12 +6,15 @@ Use cWebView.pkg
 Use cWebList.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
+Use cWebColumnButton.pkg
 Use cWebColumn.pkg
 
 Use cposicionDataDictionary.dd
 
+Open posicion
+
 Object oSelectPosicion is a cWebView
-    Set psCaption to "Seleccionar Posición"
+    Set psCaption to "Catálogo de Posiciones"
     Set peWebViewStyle to wvsDrilldown
     Set peViewType to vtSelect
     Set piColumnCount to 12
@@ -29,7 +32,7 @@ Object oSelectPosicion is a cWebView
         Set psCSSClass to "MobileList"
         Set pbServerOnRowClick to True
         Set pbFillHeight to True
-        Set pbShowHeader to True
+        Set pbShowHeader to False
         Set piSortColumn to 0
 
         Object oposicionID is a cWebColumn
@@ -44,22 +47,90 @@ Object oSelectPosicion is a cWebView
             Set piWidth to 500
         End_Object 
 
+        Object oDetailButton is a cWebColumnButton
+            Set psCaption to "Editar"
+            Set piWidth to 45
+            Set pbFixedWidth to True
+            Set pbResizable to False
+            Set piListRowSpan to 1
+            Set psBtnCssClass to "WebButtonIcon WebIcon_Edit"
+            Set peAlign to alignRight
+
+            WebRegisterPath ntNavigateForward oZoomPosicion
+
+            Procedure OnClick
+                Send NavigateForward of oZoomPosicion Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                RowID riRowId
+
+                Move False to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
+
+                Move (GetRowId(posicion.File_Number)) to riRowId
+                If (not(IsNullRowID(riRowId))) Begin
+                    Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+                End
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "PosicionID" to NavigateData.NamedValues[iElements].sName
+                Move (String(posicion.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object 
+
+        WebRegisterPath ntNavigateForward oZoomPosicion
+
         Procedure OnRowClick String sRowId
+            tWebNavigateData NavigateData
             RowID riPosicion
-            Handle hoServer
-            
-            Get Server to hoServer
-            Move (DeserializeRowID(sRowId)) to riPosicion
-            
-            If (not(IsNullRowID(riPosicion))) Begin
-                Send FindByRowId of hoServer (Main_File(hoServer)) riPosicion
-            End
-            
-            Send NavigateClose Self
+            Integer iElements
+            Get GetNavigateData to NavigateData
+
+            Case Begin
+                // Selector modal (prompt) desde ZoomJugadorPosicion
+                Case (NavigateData.eNavigateType = nfFromChild)
+                    Move (DeserializeRowID(sRowId)) to riPosicion
+                    If (not(IsNullRowID(riPosicion))) Begin
+                        Send FindByRowId of oposicion_DD posicion.File_Number riPosicion
+                    End
+
+                    // Inyectar el PosicionID en el paquete de retorno
+                    Get GetNavigateData to NavigateData
+                    Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                    Move "PosicionID" to NavigateData.NamedValues[iElements].sName
+                    Move (String(posicion.ID)) to NavigateData.NamedValues[iElements].sValue
+                    Send SetNavigateData NavigateData
+
+                    Send NavigateClose Self
+                    Case Break
+
+                Case (NavigateData.eNavigateType = nfFromMain)
+                    Send NavigateClose Self
+                    Case Break
+
+                // Navegacion regular
+                Case Else
+                    Send NavigateForward of oZoomPosicion Self
+            Case End
         End_Procedure
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
-            Move True to NavigateData.bReadOnly
+            Integer iElements
+            RowID riRowId
+
+            Move False to NavigateData.bNewRecord
+            Move False to NavigateData.bReadOnly
+
+            Move (GetRowId(posicion.File_Number)) to riRowId
+            If (not(IsNullRowID(riRowId))) Begin
+                Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+            End
+
+            Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+            Move "PosicionID" to NavigateData.NamedValues[iElements].sName
+            Move (String(posicion.ID)) to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
@@ -75,14 +146,27 @@ Object oSelectPosicion is a cWebView
             End_Procedure
         End_Object 
 
+        Object oNewButton is a cWebMenuItem
+            Set psCSSClass to "WebClearMenuItem"
+            Set psCaption to "New"
+
+            WebRegisterPath ntNavigateForward oZoomPosicion
+
+            Procedure OnClick
+                Send NavigatePath
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Move True to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
+            End_Procedure
+        End_Object 
     End_Object 
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
         Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
-        
-        // Posiciona el DDO en el primer registro de MySQL y llena la lista
-        Send Find of oposicion_DD FIRST_RECORD 1
-        Send GridRefresh of oList
+        WebSet pbRender of oNewButton to True
+        WebSet pbRender of oDetailButton to True
     End_Procedure
 
 End_Object

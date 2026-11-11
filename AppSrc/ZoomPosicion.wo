@@ -1,0 +1,216 @@
+﻿// C:\DataFlex Projects\FutbolWebApp\AppSrc\ZoomPosicion.wo
+// ZoomPosicion
+//
+
+Use cWebView.pkg
+Use cWebPanel.pkg
+Use cWebMenuGroup.pkg
+Use cWebMenuItem.pkg
+Use cWebForm.pkg
+Use cWebButton.pkg
+
+Use cposicionDataDictionary.dd
+Use cjugadorposicionDataDictionary.dd
+Use cjugadorDataDictionary.dd
+Use cequipoDataDictionary.dd
+Use cligaDataDictionary.dd
+
+Open posicion
+Open jugadorposicion
+Open jugador
+Open equipo
+Open liga
+
+Object oZoomPosicion is a cWebView
+    Set piColumnCount to 12
+    Set psCaption to "Detalle de Posición"
+    Set peWebViewStyle to wvsDrilldown
+    Set peViewType to vtZoom
+    Set pbShowCaption to False
+    Set Verify_Save_Msg to 0
+    Set piMaxWidth to 1024
+
+    // Servidores necesarios para la estructura de jugadorposicion
+    Object oliga_DD is a cligaDataDictionary
+    End_Object
+
+    Object oequipo_DD is a cequipoDataDictionary
+        Set DDO_Server to oliga_DD
+    End_Object
+
+    Object ojugador_DD is a cjugadorDataDictionary
+        Set DDO_Server to oequipo_DD
+    End_Object
+
+    // DDO Principal
+    Object oposicion_DD is a cposicionDataDictionary
+    End_Object
+
+    // DDO Cliente para evitar Error 4402 en la transaccion de borrado
+    Object ojugadorposicion_DD is a cjugadorposicionDataDictionary
+        Set DDO_Server to ojugador_DD
+        Set DDO_Server to oposicion_DD
+        Set Constrain_File to posicion.File_Number
+    End_Object
+
+    Set Main_DD to oposicion_DD
+    Set Server  to oposicion_DD
+
+    Object oWebMainPanel is a cWebPanel
+        Set piColumnCount to 12
+        WebSetResponsive piColumnCount rmMobile to 4
+
+        Object oposicionID is a cWebForm
+            Entry_Item posicion.ID
+            Set piColumnSpan to 2
+            Set piColumnIndex to 0
+            Set peLabelPosition to lpTop
+            Set psLabel to "ID"
+            Set pbReadOnly to True
+        End_Object
+
+        Object oposicionNombre is a cWebForm
+            Entry_Item posicion.Nombre
+            Set piColumnSpan to 10
+            Set piColumnIndex to 2
+            Set peLabelPosition to lpTop
+            Set psLabel to "Nombre de la Posición"
+        End_Object
+
+        Object oBtnEliminarDirecto is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "ELIMINAR ESTA POSICIÓN"
+            Set psCSSClass to "WebButtonAlert"
+
+            Procedure OnClick
+                Send Request_Delete of oZoomPosicion
+            End_Procedure
+        End_Object
+    End_Object
+
+    Object oActionGroup is a cWebMenuGroup
+
+        Object oSaveBtn is a cWebMenuItem
+            Set psCSSClass to "WebSaveMenuItem"
+            Set psCaption to "Save"
+
+            Procedure OnClick
+                Send Request_Save
+            End_Procedure
+        End_Object
+
+        Object oEditBtn is a cWebMenuItem
+            Set psCSSClass to "WebEditMenuItem"
+            Set psCaption to "Edit"
+
+            Procedure OnClick
+                Send ChangeEditMode True
+                Send SetActionButtons
+            End_Procedure
+        End_Object
+
+        Object oDeleteBtn is a cWebMenuItem
+            Set psCSSClass to "WebDeleteMenuItem"
+            Set psCaption to "Delete"
+            Set peActionDisplay to adBoth
+
+            Procedure OnClick
+                Send Request_Delete
+            End_Procedure
+        End_Object
+
+        Object oCancelChangesBtn is a cWebMenuItem
+            Set psCSSClass to "WebIcon_Refresh"
+            Set psCaption to "Clear Changes"
+            Set peActionDisplay to adMenu
+
+            Procedure OnClick
+                Send RefreshRecord
+            End_Procedure
+        End_Object
+    End_Object
+
+    Procedure SetActionButtons
+        tWebNavigateData NavigateData
+        Boolean bHasRecord bIsNew
+        Handle hoDD
+
+        Get Server to hoDD
+        Get GetNavigateData to NavigateData
+        Get HasRecord of hoDD to bHasRecord
+        Move (NavigateData.bNewRecord) to bIsNew
+
+        If (bIsNew) Begin
+            Move False to bHasRecord
+        End
+        Else Begin
+            If (posicion.ID <> 0) Move True to bHasRecord
+        End
+
+        WebSet pbRender of oEditBtn to False
+        WebSet pbRender of oSaveBtn to False
+        WebSet pbRender of oCancelChangesBtn to False
+        WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oBtnEliminarDirecto to bHasRecord
+
+        If (NavigateData.bReadOnly and not(bIsNew)) Begin
+            WebSet pbRender of oEditBtn to True
+        End
+        Else Begin
+            WebSet pbRender of oSaveBtn to True
+            WebSet pbRender of oCancelChangesBtn to True
+        End
+    End_Procedure
+
+    Procedure OnViewSaved Handle hoServer Boolean bChanged
+        Send NavigateClose Self
+    End_Procedure
+
+    Procedure OnViewDeleted Handle hoDDO
+        Send NavigateClose Self
+    End_Procedure
+
+    Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        RowID riPosicion
+        Integer iIndex iCount
+        String sPosicionID
+
+        Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
+
+        If (NavigateData.bNewRecord) Begin
+            Send Request_Clear of oposicion_DD
+        End
+        Else Begin
+            If (NavigateData.sRowId <> "") Begin
+                Move (DeserializeRowID(NavigateData.sRowId)) to riPosicion
+                If (not(IsNullRowID(riPosicion))) Begin
+                    Send FindByRowId of oposicion_DD posicion.File_Number riPosicion
+                End
+            End
+
+            If (not(HasRecord(oposicion_DD))) Begin
+                Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+                For iIndex from 0 to (iCount - 1)
+                    If (NavigateData.NamedValues[iIndex].sName = "PosicionID" or NavigateData.NamedValues[iIndex].sName = "ID") Begin
+                        Move NavigateData.NamedValues[iIndex].sValue to sPosicionID
+                    End
+                Loop
+
+                If (sPosicionID <> "" and sPosicionID <> "0") Begin
+                    Clear posicion
+                    Move (Integer(sPosicionID)) to posicion.ID
+                    Send Find of oposicion_DD EQ 1
+                End
+            End
+        End
+
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
+        Send SetActionButtons
+    End_Procedure
+
+End_Object

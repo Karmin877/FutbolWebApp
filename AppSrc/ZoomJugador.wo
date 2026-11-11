@@ -121,7 +121,30 @@ Object oZoomJugador is a cWebView
             End_Procedure
         End_Object
 
-        // Boton directo visible en panel
+        // Boton directo en panel para gestionar posiciones del jugador
+        Object oBtnVerPosiciones is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "GESTIONAR POSICIONES DEL JUGADOR"
+            Set psCSSClass to "WebButtonPrimary"
+
+            WebRegisterPath ntNavigateForward oSelectJugadorPosicion
+
+            Procedure OnClick
+                Send NavigateForward of oSelectJugadorPosicion Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                Move True to NavigateData.bReadOnly
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+                Move (String(jugador.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
+
+        // Boton directo visible en panel para eliminar
         Object oBtnEliminarDirecto is a cWebButton
             Set piColumnSpan to 12
             Set piColumnIndex to 0
@@ -218,6 +241,9 @@ Object oZoomJugador is a cWebView
         WebSet pbRender of oCancelChangesBtn to False
         WebSet pbRender of oDeleteBtn to bHasRecord
         WebSet pbRender of oBtnEliminarDirecto to bHasRecord
+
+        // Mostrar boton de posiciones solo si el jugador ya existe guardado
+        WebSet pbRender of oBtnVerPosiciones to bHasRecord
         WebSet pbRender of oPosicionesBtn to bHasRecord
 
         If (NavigateData.bReadOnly and not(bIsNew)) Begin
@@ -237,7 +263,6 @@ Object oZoomJugador is a cWebView
         Send NavigateClose Self
     End_Procedure
 
-    // Sincroniza el equipo elegido mediante el prompt button
     Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
         Forward Send OnNavigateBack NavigateData hoInvokingView
 
@@ -275,7 +300,6 @@ Object oZoomJugador is a cWebView
             End
         End
         Else Begin
-            // Carga por RowId serializado
             If (NavigateData.sRowId <> "") Begin
                 Move (DeserializeRowID(NavigateData.sRowId)) to riJugador
                 If (not(IsNullRowID(riJugador))) Begin
@@ -283,7 +307,6 @@ Object oZoomJugador is a cWebView
                 End
             End
 
-            // Fallback por JugadorID
             If (not(HasRecord(ojugador_DD))) Begin
                 Move (SizeOfArray(NavigateData.NamedValues)) to iCount
                 For iIndex from 0 to (iCount - 1)

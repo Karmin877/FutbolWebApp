@@ -1,4 +1,5 @@
-﻿Use DataDict.pkg
+﻿// DDSrc/cposicionDataDictionary.dd
+Use DataDict.pkg
 
 Open posicion
 Open jugadorposicion
@@ -18,5 +19,40 @@ Class cposicionDataDictionary is a DataDictionary
         Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
+
+    // Validacion para impedir borrar posiciones asignadas a jugadores
+    Function Validate_Delete Returns Integer
+        Integer iRet iPosID
+        Boolean bAsignada
+        Forward Get Validate_Delete to iRet
+        If (iRet <> 0) Function_Return iRet
+
+        Move posicion.ID to iPosID
+        Move False to bAsignada
+
+        // Comprobacion en jugadorposicion
+        Clear jugadorposicion
+        Move iPosID to jugadorposicion.PosicionID
+        Find ge jugadorposicion by Index.1
+        While (Found and not(bAsignada))
+            If (jugadorposicion.PosicionID = iPosID) Begin
+                Move True to bAsignada
+            End
+            Else Begin
+                // Salir del bucle si ya cambio el PosicionID
+                Find gt jugadorposicion by Index.1
+                If (not(Found) or jugadorposicion.PosicionID <> iPosID) Begin
+                    Break
+                End
+            End
+        Loop
+
+        If (bAsignada) Begin
+            Send UserError "No se puede eliminar la posición porque está asignada a uno o más jugadores." "Restricción de Borrado"
+            Function_Return 1
+        End
+
+        Function_Return 0
+    End_Function
 
 End_Class

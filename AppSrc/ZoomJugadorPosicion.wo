@@ -33,6 +33,9 @@ Object oZoomJugadorPosicion is a cWebView
     { WebProperty=Server }
     Property String psJugadorID ""
 
+    { WebProperty=Server }
+    Property String psPosicionID ""
+
     Object oliga_DD is a cligaDataDictionary
     End_Object 
 
@@ -52,7 +55,7 @@ Object oZoomJugadorPosicion is a cWebView
         Set DDO_Server to oposicion_DD
 
         Procedure Creating
-            String sJugID
+            String sJugID sPosID
             Forward Send Creating
             
             WebGet psJugadorID of oZoomJugadorPosicion to sJugID
@@ -63,8 +66,12 @@ Object oZoomJugadorPosicion is a cWebView
                 Move (Integer(sJugID)) to jugadorposicion.JugadorID
             End
 
+            WebGet psPosicionID of oZoomJugadorPosicion to sPosID
             If (posicion.ID <> 0) Begin
                 Move posicion.ID to jugadorposicion.PosicionID
+            End
+            Else If (sPosID <> "") Begin
+                Move (Integer(sPosID)) to jugadorposicion.PosicionID
             End
         End_Procedure
     End_Object 
@@ -84,6 +91,17 @@ Object oZoomJugadorPosicion is a cWebView
             Set psLabel to "ID"
             Set pbReadOnly to True
         End_Object 
+
+        // Campos ocultos para mantener la sincronizacion de claves foraneas en cliente
+        Object ojugadorposicionJugadorID is a cWebForm
+            Entry_Item jugadorposicion.JugadorID
+            Set pbRender to False
+        End_Object
+
+        Object ojugadorposicionPosicionID is a cWebForm
+            Entry_Item jugadorposicion.PosicionID
+            Set pbRender to False
+        End_Object
 
         Object ojugadorNombre is a cWebForm
             Entry_Item jugador.Nombre
@@ -109,7 +127,6 @@ Object oZoomJugadorPosicion is a cWebView
             End_Procedure
         End_Object 
 
-        // Boton directo en panel para desvincular la posicion
         Object oBtnEliminarDirecto is a cWebButton
             Set piColumnSpan to 12
             Set piColumnIndex to 0
@@ -205,20 +222,41 @@ Object oZoomJugadorPosicion is a cWebView
     End_Procedure
 
     Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
-        String sJugID
+        String sJugID sPosID
+        Integer iIndex iCount
         Forward Send OnNavigateBack NavigateData hoInvokingView
 
+        // 1. Sincronizar jugador
         WebGet psJugadorID to sJugID
         If (sJugID <> "" and jugador.ID = 0) Begin
             Clear jugador
             Move (Integer(sJugID)) to jugador.ID
             Send Find of ojugador_DD EQ 1
+            Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.JugadorID to (Integer(sJugID))
         End
 
-        If (posicion.ID <> 0) Begin
-            Send Find of oposicion_DD EQ 1
-            Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.PosicionID to posicion.ID
+        // 2. Extraer PosicionID devuelto en NamedValues
+        Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+        For iIndex from 0 to (iCount - 1)
+            If (NavigateData.NamedValues[iIndex].sName = "PosicionID") Begin
+                Move NavigateData.NamedValues[iIndex].sValue to sPosID
+            End
+        Loop
+
+        If (sPosID = "" and posicion.ID <> 0) Begin
+            Move (String(posicion.ID)) to sPosID
         End
+
+        // 3. Forzar carga en el DDO de posicion y en el buffer intermedio
+        If (sPosID <> "" and sPosID <> "0") Begin
+            WebSet psPosicionID to sPosID
+            Clear posicion
+            Move (Integer(sPosID)) to posicion.ID
+            Send Find of oposicion_DD EQ 1
+
+            Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.PosicionID to (Integer(sPosID))
+        End
+
         Send SetActionButtons
     End_Procedure
 
@@ -251,6 +289,7 @@ Object oZoomJugadorPosicion is a cWebView
             If (sJugadorID <> "") Begin
                 Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.JugadorID to (Integer(sJugadorID))
             End
+            WebSet psPosicionID to ""
         End
         Else Begin
             If (NavigateData.sRowId <> "") Begin
@@ -264,6 +303,10 @@ Object oZoomJugadorPosicion is a cWebView
                 Clear jugadorposicion
                 Move (Integer(sJPID)) to jugadorposicion.ID
                 Send Find of ojugadorposicion_DD EQ 1
+            End
+
+            If (HasRecord(ojugadorposicion_DD)) Begin
+                WebSet psPosicionID to (String(jugadorposicion.PosicionID))
             End
         End
 
