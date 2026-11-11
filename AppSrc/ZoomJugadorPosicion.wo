@@ -7,6 +7,7 @@ Use cWebPanel.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
 Use cWebForm.pkg
+Use cWebButton.pkg
 
 Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
@@ -14,6 +15,10 @@ Use cjugadorDataDictionary.dd
 Use cposicionDataDictionary.dd
 Use cjugadorposicionDataDictionary.dd
 
+Open liga
+Open equipo
+Open jugador
+Open posicion
 Open jugadorposicion
 
 Object oZoomJugadorPosicion is a cWebView
@@ -62,47 +67,6 @@ Object oZoomJugadorPosicion is a cWebView
                 Move posicion.ID to jugadorposicion.PosicionID
             End
         End_Procedure
-
-        Function Validate_Save Returns Integer
-            Integer iRet iJugID iPosID
-            String sJugID
-            Forward Get Validate_Save to iRet
-            If (iRet <> 0) Function_Return iRet
-
-            // Recuperar IDs de los buffers o propiedades web
-            Get Field_Current_Value of ojugadorposicion_DD Field jugadorposicion.JugadorID to iJugID
-            If (iJugID = 0) Begin
-                If (jugador.ID <> 0) Move jugador.ID to iJugID
-                Else Begin
-                    WebGet psJugadorID of oZoomJugadorPosicion to sJugID
-                    If (sJugID <> "") Move (Integer(sJugID)) to iJugID
-                End
-            End
-
-            Get Field_Current_Value of ojugadorposicion_DD Field jugadorposicion.PosicionID to iPosID
-            If (iPosID = 0 and posicion.ID <> 0) Begin
-                Move posicion.ID to iPosID
-            End
-
-            If (iPosID = 0) Begin
-                Send UserError "Debe seleccionar una posición antes de guardar." "Validación"
-                Function_Return 1
-            End
-
-            // Comprobar asignaciones duplicadas solo en altas nuevas
-            If (not(HasRecord(ojugadorposicion_DD))) Begin
-                Clear jugadorposicion
-                Move iJugID to jugadorposicion.JugadorID
-                Move iPosID to jugadorposicion.PosicionID
-                Find eq jugadorposicion by Index.2
-                If (Found) Begin
-                    Send UserError "Este jugador ya tiene asignada esa posición." "Validación"
-                    Function_Return 1
-                End
-            End
-
-            Function_Return 0
-        End_Function
     End_Object 
 
     Set Main_DD to ojugadorposicion_DD
@@ -144,6 +108,18 @@ Object oZoomJugadorPosicion is a cWebView
                 Send NavigatePath
             End_Procedure
         End_Object 
+
+        // Boton directo en panel para desvincular la posicion
+        Object oBtnEliminarDirecto is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "DESVINCULAR ESTA POSICIÓN"
+            Set psCSSClass to "WebButtonAlert"
+
+            Procedure OnClick
+                Send Request_Delete of oZoomJugadorPosicion
+            End_Procedure
+        End_Object
     End_Object 
 
     Object oActionGroup is a cWebMenuGroup
@@ -170,7 +146,7 @@ Object oZoomJugadorPosicion is a cWebView
         Object oDeleteBtn is a cWebMenuItem
             Set psCSSClass to "WebDeleteMenuItem"
             Set psCaption to "Delete"
-            Set peActionDisplay to adMenu
+            Set peActionDisplay to adBoth
 
             Procedure OnClick
                 Send Request_Delete
@@ -190,25 +166,33 @@ Object oZoomJugadorPosicion is a cWebView
 
     Procedure SetActionButtons
         tWebNavigateData NavigateData
-        Boolean bHasRecord
+        Boolean bHasRecord bIsNew
         Handle hoDD
 
         Get Server to hoDD
         Get GetNavigateData to NavigateData
         Get HasRecord of hoDD to bHasRecord
+        Move (NavigateData.bNewRecord) to bIsNew
+
+        If (bIsNew) Begin
+            Move False to bHasRecord
+        End
+        Else Begin
+            If (jugadorposicion.ID <> 0) Move True to bHasRecord
+        End
 
         WebSet pbRender of oEditBtn to False
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
-        WebSet pbRender of oDeleteBtn to False
+        WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oBtnEliminarDirecto to bHasRecord
 
-        If (NavigateData.bReadOnly and not(NavigateData.bNewRecord)) Begin
+        If (NavigateData.bReadOnly and not(bIsNew)) Begin
             WebSet pbRender of oEditBtn to True
         End
         Else Begin
             WebSet pbRender of oSaveBtn to True
             WebSet pbRender of oCancelChangesBtn to True
-            WebSet pbRender of oDeleteBtn to bHasRecord
         End
     End_Procedure
 
@@ -235,34 +219,59 @@ Object oZoomJugadorPosicion is a cWebView
             Send Find of oposicion_DD EQ 1
             Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.PosicionID to posicion.ID
         End
+        Send SetActionButtons
     End_Procedure
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        RowID riJP
         Integer iIndex iCount
-        String sJugadorID
+        String sJugadorID sJPID
 
         Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
 
+        Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+        For iIndex from 0 to (iCount - 1)
+            If (NavigateData.NamedValues[iIndex].sName = "JugadorID") Begin
+                Move NavigateData.NamedValues[iIndex].sValue to sJugadorID
+            End
+            If (NavigateData.NamedValues[iIndex].sName = "JugadorPosicionID") Begin
+                Move NavigateData.NamedValues[iIndex].sValue to sJPID
+            End
+        Loop
+
+        If (sJugadorID <> "") Begin
+            WebSet psJugadorID to sJugadorID
+            Clear jugador
+            Move (Integer(sJugadorID)) to jugador.ID
+            Send Find of ojugador_DD EQ 1
+        End
+
         If (NavigateData.bNewRecord) Begin
             Send Request_Clear of ojugadorposicion_DD
-
-            Move (SizeOfArray(NavigateData.NamedValues)) to iCount
-            For iIndex from 0 to (iCount - 1)
-                If (NavigateData.NamedValues[iIndex].sName = "JugadorID") Begin
-                    Move NavigateData.NamedValues[iIndex].sValue to sJugadorID
-                End
-            Loop
-
             If (sJugadorID <> "") Begin
-                WebSet psJugadorID to sJugadorID
-                Clear jugador
-                Move (Integer(sJugadorID)) to jugador.ID
-                Send Find of ojugador_DD EQ 1
-
                 Set Field_Changed_Value of ojugadorposicion_DD Field jugadorposicion.JugadorID to (Integer(sJugadorID))
             End
         End
+        Else Begin
+            If (NavigateData.sRowId <> "") Begin
+                Move (DeserializeRowID(NavigateData.sRowId)) to riJP
+                If (not(IsNullRowID(riJP))) Begin
+                    Send FindByRowId of ojugadorposicion_DD jugadorposicion.File_Number riJP
+                End
+            End
 
+            If (not(HasRecord(ojugadorposicion_DD)) and sJPID <> "" and sJPID <> "0") Begin
+                Clear jugadorposicion
+                Move (Integer(sJPID)) to jugadorposicion.ID
+                Send Find of ojugadorposicion_DD EQ 1
+            End
+        End
+
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
         Send SetActionButtons
     End_Procedure
 

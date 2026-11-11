@@ -1,4 +1,5 @@
-﻿Use DataDict.pkg
+﻿// DDSrc/cjugadorposicionDataDictionary.dd
+Use DataDict.pkg
 
 Open jugadorposicion
 Open jugador
@@ -16,8 +17,38 @@ Class cjugadorposicionDataDictionary is a DataDictionary
         Set Foreign_Field_Option DD_KEYFIELD DD_NOPUT to True
         Set Foreign_Field_Option DD_KEYFIELD DD_FINDREQ to True
         Set Foreign_Field_Option DD_INDEXFIELD DD_NOPUT to True
-        Set Foreign_Field_Option DD_DEFAULT DD_DISPLAYONLY to True
+        Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
+
+    // Validacion para evitar error de clave duplicada en MySQL
+    Function Validate_Save Returns Integer
+        Integer iRet iJugID iPosID iRegID
+        Forward Get Validate_Save to iRet
+        If (iRet <> 0) Function_Return iRet
+
+        Get Field_Current_Value Field jugadorposicion.ID to iRegID
+        Get Field_Current_Value Field jugadorposicion.JugadorID to iJugID
+        Get Field_Current_Value Field jugadorposicion.PosicionID to iPosID
+
+        If (iPosID = 0) Begin
+            Send UserError "Debe seleccionar una posición válida." "Validación"
+            Function_Return 1
+        End
+
+        // Si es alta nueva o cambio de posicion, comprobar que no exista el par (JugadorID, PosicionID)
+        If (iRegID = 0) Begin
+            Clear jugadorposicion
+            Move iJugID to jugadorposicion.JugadorID
+            Move iPosID to jugadorposicion.PosicionID
+            Find eq jugadorposicion by Index.2
+            If (Found) Begin
+                Send UserError "Este jugador ya tiene asignada esa posición." "Restricción de Negocio"
+                Function_Return 1
+            End
+        End
+
+        Function_Return 0
+    End_Function
 
 End_Class
