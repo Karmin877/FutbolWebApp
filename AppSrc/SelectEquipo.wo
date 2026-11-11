@@ -64,9 +64,12 @@ Object oSelectEquipo is a cWebView
             Set piListRowSpan to 1
             Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
             Set peAlign to alignRight
+            
+            // Registramos la ruta hacia la vista de entrenador
+            WebRegisterPath ntNavigateForward oSelectEntrenador
 
             Procedure OnClick
-                Send NavigatePath
+                Send NavigateForward of oSelectEntrenador Self
             End_Procedure
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
@@ -132,7 +135,7 @@ Object oSelectEquipo is a cWebView
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
         WebSet pbRender of oNewButton to False
-        WebSet pbRender of oDetailButton to False
+        WebSet pbRender of oDetailButton to True
 
         Case Begin
             Case (NavigateData.eNavigateType = nfFromParent)
