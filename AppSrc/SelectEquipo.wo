@@ -123,6 +123,9 @@ Object oSelectEquipo is a cWebView
             Set psCSSClass to "WebClearMenuItem"
             Set psCaption to "New"
 
+            // Registramos la ruta hacia ZoomEquipo para altas
+            WebRegisterPath ntNavigateForward oZoomEquipo
+
             Procedure OnClick
                 Send NavigatePath
             End_Procedure
@@ -134,12 +137,11 @@ Object oSelectEquipo is a cWebView
     End_Object 
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
-        WebSet pbRender of oNewButton to False
+        WebSet pbRender of oNewButton to True
         WebSet pbRender of oDetailButton to True
 
         Case Begin
             Case (NavigateData.eNavigateType = nfFromParent)
-                // Restriccion padre activa desde SelectLiga
                 Case Break
 
             Case (NavigateData.eNavigateType = nfFromChild)

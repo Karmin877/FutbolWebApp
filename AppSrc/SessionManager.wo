@@ -1,6 +1,18 @@
+﻿// C:\DataFlex Projects\FutbolWebApp\AppSrc\SessionManager.wo
+// SessionManager
+//
+
 Use cWebSessionManagerStandard.pkg
+Use cWebAppSessionDataDictionary.dd
+Use cWebAppUserDataDictionary.dd
 
 Object oSessionManager is a cWebSessionManagerStandard
-End_Object
 
+    Object oWebAppSession_DD is a cWebAppSessionDataDictionary
+    End_Object
+
+    Object oWebAppUserDataDictionary is a cWebAppUserDataDictionary
+    End_Object
+
+End_Object
 

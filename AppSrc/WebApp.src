@@ -55,7 +55,6 @@ Object oWebApp is a cWebApp
 
                     Object oSelectLigaItem1 is a cWebMenuItem
                         Set psCaption to "SelectLiga"
-
                         WebRegisterPath ntNavigateBegin oSelectLiga
 
                         Procedure OnClick
@@ -66,45 +65,41 @@ Object oWebApp is a cWebApp
 
                     Object oSelectEquipoItem1 is a cWebMenuItem
                         Set psCaption to "SelectEquipo"
-
                         WebRegisterPath ntNavigateBegin oSelectEquipo
 
                         Procedure OnClick
                             Forward Send OnClick
-                                Send NavigatePath
+                            Send NavigatePath
                         End_Procedure
                     End_Object
 
                     Object oSelectJugadorItem1 is a cWebMenuItem
                         Set psCaption to "SelectJugador"
-
                         WebRegisterPath ntNavigateBegin oSelectJugador
 
                         Procedure OnClick
                             Forward Send OnClick
-                                Send NavigatePath
+                            Send NavigatePath
                         End_Procedure
                     End_Object
 
                     Object oSelectEntrenadorItem1 is a cWebMenuItem
                         Set psCaption to "SelectEntrenador"
-
                         WebRegisterPath ntNavigateBegin oSelectEntrenador
 
                         Procedure OnClick
                             Forward Send OnClick
-                                Send NavigatePath
+                            Send NavigatePath
                         End_Procedure
                     End_Object
 
                     Object oSelectPosicionItem1 is a cWebMenuItem
                         Set psCaption to "SelectPosicion"
-
                         WebRegisterPath ntNavigateBegin oSelectPosicion
 
                         Procedure OnClick
                             Forward Send OnClick
-                                Send NavigatePath
+                            Send NavigatePath
                         End_Procedure
                     End_Object
                 End_Object
@@ -124,7 +119,6 @@ Object oWebApp is a cWebApp
                 
                 Procedure OnClick
                     Handle hoTop
-                    
                     Get TopViewHandle of oViewStack to hoTop
                     If (hoTop > 0) Begin
                         Send NavigateCancel of hoTop 
@@ -167,7 +161,6 @@ Object oWebApp is a cWebApp
 
             Object oMainActions is a cWebActionBar
                 Set psGroupName to "MainActions"
-
                 Set piColumnSpan to 0
                 Set peAlign to alignRight
             End_Object
@@ -194,6 +187,7 @@ Object oWebApp is a cWebApp
     Use SelectEntrenador.wo
     Use SelectPosicion.wo
     Use ZoomLiga.wo
+    Use ZoomEquipo.wo
     Set phoDefaultView to oDashboard
 
 End_Object
