@@ -12,6 +12,9 @@ Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 Use centrenadorDataDictionary.dd
 
+Open entrenador
+Open equipo
+
 Object oZoomEntrenador is a cWebView
     Set piColumnCount to 12
     Set psCaption to "Detalle Entrenador"
@@ -20,6 +23,9 @@ Object oZoomEntrenador is a cWebView
     Set pbShowCaption to False
     Set Verify_Save_Msg to 0
     Set piMaxWidth to 1024
+
+    { WebProperty=Server }
+    Property String psEquipoID ""
 
     Object oliga_DD is a cligaDataDictionary
     End_Object 
@@ -33,11 +39,36 @@ Object oZoomEntrenador is a cWebView
 
         // Inyeccion de FK obligatoria antes del INSERT en MySQL
         Procedure Creating
+            String sEqID
             Forward Send Creating
+            
+            WebGet psEquipoID of oZoomEntrenador to sEqID
             If (equipo.ID <> 0) Begin
                 Move equipo.ID to entrenador.EquipoID
             End
+            Else If (sEqID <> "") Begin
+                Move (Integer(sEqID)) to entrenador.EquipoID
+            End
         End_Procedure
+
+        // Validacion: impedir guardar si falta asignar un equipo
+        Function Validate_Save Returns Integer
+            Integer iRet iEqID
+            Forward Get Validate_Save to iRet
+            If (iRet <> 0) Function_Return iRet
+
+            Get Field_Current_Value of oentrenador_DD Field entrenador.EquipoID to iEqID
+            If (iEqID = 0 and equipo.ID <> 0) Begin
+                Move equipo.ID to iEqID
+            End
+
+            If (iEqID = 0) Begin
+                Send UserError "Debe seleccionar un equipo antes de guardar." "Validación"
+                Function_Return 1
+            End
+
+            Function_Return 0
+        End_Function
     End_Object 
 
     Set Main_DD to oentrenador_DD
@@ -55,12 +86,6 @@ Object oZoomEntrenador is a cWebView
             Set psLabel to "ID"
             Set pbReadOnly to True
         End_Object 
-
-        // Campo oculto para sincronizar la foreign key en el cliente web
-        Object oentrenadorEquipoID is a cWebForm
-            Entry_Item entrenador.EquipoID
-            Set pbRender to False
-        End_Object
 
         Object oentrenadorNombre is a cWebForm
             Entry_Item entrenador.Nombre
@@ -158,7 +183,7 @@ Object oZoomEntrenador is a cWebView
         WebSet pbRender of oCancelChangesBtn to False
         WebSet pbRender of oDeleteBtn to False
 
-        If (NavigateData.bReadOnly) Begin
+        If (NavigateData.bReadOnly and not(NavigateData.bNewRecord)) Begin
             WebSet pbRender of oEditBtn to True
         End
         Else Begin
@@ -174,6 +199,17 @@ Object oZoomEntrenador is a cWebView
 
     Procedure OnViewDeleted Handle hoDDO
         Send NavigateClose Self
+    End_Procedure
+
+    // Sincroniza el equipo elegido en el selector
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+
+        If (equipo.ID <> 0) Begin
+            Send Find of oequipo_DD EQ 1
+            WebSet psEquipoID to (String(equipo.ID))
+            Set Field_Changed_Value of oentrenador_DD Field entrenador.EquipoID to equipo.ID
+        End
     End_Procedure
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
@@ -193,11 +229,12 @@ Object oZoomEntrenador is a cWebView
             Loop
 
             If (sEquipoID <> "") Begin
+                WebSet psEquipoID to sEquipoID
                 Clear equipo
-                Move sEquipoID to equipo.ID
+                Move (Integer(sEquipoID)) to equipo.ID
                 Send Find of oequipo_DD EQ 1
 
-                Set Field_Changed_Value of oentrenador_DD Field entrenador.EquipoID to sEquipoID
+                Set Field_Changed_Value of oentrenador_DD Field entrenador.EquipoID to (Integer(sEquipoID))
             End
         End
 
