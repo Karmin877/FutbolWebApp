@@ -1,0 +1,22 @@
+# Binarios y compilados
+Programs/*.exe
+Programs/*.dfo
+Programs/*.pkd
+Programs/*.dbg
+Programs/*.wso
+Programs/*.dll
+
+# Archivos de sesión y temporales locales
+Data/*.vdf
+Data/*.tag
+Data/*.k1
+Data/*.dat
+Data/*.log
+AppHtml/Cache/*
+
+# Ficheros de estado del IDE
+*.swp
+*.bak
+*.tmp
+~*
+IdeSrc/
