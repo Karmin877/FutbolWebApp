@@ -23,6 +23,10 @@ Object oSelectJugadorPosicion is a cWebView
     Set pbShowCaption to False
     Set piMaxWidth to 1024
 
+    // Propiedad persistente para mantener el contexto del jugador entre idas y vueltas
+    { WebProperty=Server }
+    Property String psJugadorID ""
+
     Object oliga_DD is a cligaDataDictionary
     End_Object 
 
@@ -84,11 +88,15 @@ Object oSelectJugadorPosicion is a cWebView
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
                 Integer iElements
+                String sJugID
                 Move True to NavigateData.bReadOnly
                 
+                WebGet psJugadorID of oSelectJugadorPosicion to sJugID
+                If (sJugID = "" and jugador.ID <> 0) Move (String(jugador.ID)) to sJugID
+
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "JugadorID" to NavigateData.NamedValues[iElements].sName
-                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+                Move sJugID      to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
 
@@ -114,11 +122,15 @@ Object oSelectJugadorPosicion is a cWebView
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
             Integer iElements
+            String sJugID
             Move True to NavigateData.bReadOnly
             
+            WebGet psJugadorID of oSelectJugadorPosicion to sJugID
+            If (sJugID = "" and jugador.ID <> 0) Move (String(jugador.ID)) to sJugID
+
             Move (SizeOfArray(NavigateData.NamedValues)) to iElements
             Move "JugadorID" to NavigateData.NamedValues[iElements].sName
-            Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+            Move sJugID      to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
@@ -146,14 +158,34 @@ Object oSelectJugadorPosicion is a cWebView
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
                 Integer iElements
+                String sJugID
                 Move True to NavigateData.bNewRecord
+
+                WebGet psJugadorID of oSelectJugadorPosicion to sJugID
+                If (sJugID = "" and jugador.ID <> 0) Move (String(jugador.ID)) to sJugID
 
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "JugadorID" to NavigateData.NamedValues[iElements].sName
-                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+                Move sJugID      to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
     End_Object 
+
+    // Al regresar tras guardar o eliminar en ZoomJugadorPosicion
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        String sJugadorID
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+
+        WebGet psJugadorID to sJugadorID
+        If (sJugadorID <> "") Begin
+            Clear jugador
+            Move (Integer(sJugadorID)) to jugador.ID
+            Send Find of ojugador_DD EQ 1
+            Send Rebuild_Constraints of ojugadorposicion_DD
+        End
+
+        Send GridRefresh of oList
+    End_Procedure
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
         String sJugadorID
@@ -169,8 +201,9 @@ Object oSelectJugadorPosicion is a cWebView
         Loop
 
         If (sJugadorID <> "") Begin
+            WebSet psJugadorID to sJugadorID
             Clear jugador
-            Move sJugadorID to jugador.ID
+            Move (Integer(sJugadorID)) to jugador.ID
             Send Find of ojugador_DD EQ 1
             
             // Reconstruye el filtro DDO para refrescar la lista con este jugador especifico
