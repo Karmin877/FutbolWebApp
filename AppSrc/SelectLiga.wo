@@ -60,6 +60,9 @@ Object oSelectLiga is a cWebView
             Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
             Set peAlign to alignRight
 
+            // Ruta hacia ZoomLiga para ver/editar la liga seleccionada
+            WebRegisterPath ntNavigateForward oZoomLiga
+
             Procedure OnClick
                 Send NavigatePath
             End_Procedure
@@ -115,6 +118,9 @@ Object oSelectLiga is a cWebView
             Set psCSSClass to "WebClearMenuItem"
             Set psCaption to "New"
 
+            // Ruta hacia ZoomLiga para crear nuevo registro
+            WebRegisterPath ntNavigateForward oZoomLiga
+
             Procedure OnClick
                 Send NavigatePath
             End_Procedure
@@ -126,8 +132,8 @@ Object oSelectLiga is a cWebView
     End_Object 
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
-        WebSet pbRender of oNewButton to False
-        WebSet pbRender of oDetailButton to False
+        WebSet pbRender of oNewButton to True
+        WebSet pbRender of oDetailButton to True
 
         Case Begin
             Case (NavigateData.eNavigateType = nfFromParent)
