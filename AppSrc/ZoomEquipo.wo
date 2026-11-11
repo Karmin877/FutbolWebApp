@@ -7,34 +7,76 @@ Use cWebPanel.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
 Use cWebForm.pkg
+Use cWebButton.pkg
 
 Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
+Use cjugadorDataDictionary.dd
+Use centrenadorDataDictionary.dd
+Use cposicionDataDictionary.dd
+Use cjugadorposicionDataDictionary.dd
+
+Open liga
+Open equipo
+Open jugador
+Open entrenador
+Open posicion
+Open jugadorposicion
 
 Object oZoomEquipo is a cWebView
     Set piColumnCount to 12
-    Set psCaption to "ZoomEquipo"
+    Set psCaption to "Detalle de Equipo"
     Set peWebViewStyle to wvsDrilldown
     Set peViewType to vtZoom
     Set pbShowCaption to False
     Set Verify_Save_Msg to 0
     Set piMaxWidth to 1024
 
+    { WebProperty=Server }
+    Property String psLigaID ""
+
+    // 1. Servidor de Liga
     Object oliga_DD is a cligaDataDictionary
     End_Object 
 
+    // 2. DDO Principal: Equipo
     Object oequipo_DD is a cequipoDataDictionary
         Set DDO_Server to oliga_DD
 
-        // Garantiza que antes de guardar el registro en MySQL,
-        // la clave foranea LigaID tome siempre el ID de la liga activa
         Procedure Creating
+            String sLigID
             Forward Send Creating
+            
+            WebGet psLigaID of oZoomEquipo to sLigID
             If (liga.ID <> 0) Begin
                 Move liga.ID to equipo.LigaID
             End
+            Else If (sLigID <> "") Begin
+                Move (Integer(sLigID)) to equipo.LigaID
+            End
         End_Procedure
     End_Object 
+
+    // 3. Clientes directos de Equipo
+    Object oentrenador_DD is a centrenadorDataDictionary
+        Set DDO_Server to oequipo_DD
+        Set Constrain_File to equipo.File_Number
+    End_Object
+
+    Object ojugador_DD is a cjugadorDataDictionary
+        Set DDO_Server to oequipo_DD
+        Set Constrain_File to equipo.File_Number
+    End_Object
+
+    // 4. Estructura completa de JugadorPosicion (exigida por el Cascade_Delete de Jugador)
+    Object oposicion_DD is a cposicionDataDictionary
+    End_Object
+
+    Object ojugadorposicion_DD is a cjugadorposicionDataDictionary
+        Set DDO_Server to ojugador_DD
+        Set DDO_Server to oposicion_DD
+        Set Constrain_File to jugador.File_Number
+    End_Object
 
     Set Main_DD to oequipo_DD
     Set Server  to oequipo_DD
@@ -52,7 +94,6 @@ Object oZoomEquipo is a cWebView
             Set pbReadOnly to True
         End_Object 
 
-        // Campo oculto para mantener sincronizada la Foreign Key en el cliente web
         Object oequipoLigaID is a cWebForm
             Entry_Item equipo.LigaID
             Set pbRender to False
@@ -60,8 +101,8 @@ Object oZoomEquipo is a cWebView
 
         Object oequipoNombre is a cWebForm
             Entry_Item equipo.Nombre
-            Set piColumnSpan to 12
-            Set piColumnIndex to 0
+            Set piColumnSpan to 10
+            Set piColumnIndex to 2
             Set peLabelPosition to lpTop
             Set psLabel to "Nombre"
         End_Object 
@@ -80,6 +121,17 @@ Object oZoomEquipo is a cWebView
                 Send NavigatePath
             End_Procedure
         End_Object 
+
+        Object oBtnEliminarDirecto is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "ELIMINAR ESTE EQUIPO"
+            Set psCSSClass to "WebButtonAlert"
+
+            Procedure OnClick
+                Send Request_Delete of oZoomEquipo
+            End_Procedure
+        End_Object
     End_Object 
 
     Object oActionGroup is a cWebMenuGroup
@@ -106,7 +158,7 @@ Object oZoomEquipo is a cWebView
         Object oDeleteBtn is a cWebMenuItem
             Set psCSSClass to "WebDeleteMenuItem"
             Set psCaption to "Delete"
-            Set peActionDisplay to adMenu
+            Set peActionDisplay to adBoth
 
             Procedure OnClick
                 Send Request_Delete
@@ -126,25 +178,33 @@ Object oZoomEquipo is a cWebView
 
     Procedure SetActionButtons
         tWebNavigateData NavigateData
-        Boolean bHasRecord
+        Boolean bHasRecord bIsNew
         Handle hoDD
 
         Get Server to hoDD
         Get GetNavigateData to NavigateData
         Get HasRecord of hoDD to bHasRecord
+        Move (NavigateData.bNewRecord) to bIsNew
+
+        If (bIsNew) Begin
+            Move False to bHasRecord
+        End
+        Else Begin
+            If (equipo.ID <> 0) Move True to bHasRecord
+        End
 
         WebSet pbRender of oEditBtn to False
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
-        WebSet pbRender of oDeleteBtn to False
+        WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oBtnEliminarDirecto to bHasRecord
 
-        If (NavigateData.bReadOnly) Begin
+        If (NavigateData.bReadOnly and not(bIsNew)) Begin
             WebSet pbRender of oEditBtn to True
         End
         Else Begin
             WebSet pbRender of oSaveBtn to True
             WebSet pbRender of oCancelChangesBtn to True
-            WebSet pbRender of oDeleteBtn to bHasRecord
         End
     End_Procedure
 
@@ -156,9 +216,21 @@ Object oZoomEquipo is a cWebView
         Send NavigateClose Self
     End_Procedure
 
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+
+        If (liga.ID <> 0) Begin
+            Send Find of oliga_DD EQ 1
+            WebSet psLigaID to (String(liga.ID))
+            Set Field_Changed_Value of oequipo_DD Field equipo.LigaID to liga.ID
+        End
+        Send SetActionButtons
+    End_Procedure
+
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        RowID riEquipo
         Integer iIndex iCount
-        String sLigaID
+        String sLigaID sEquipoID
 
         Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
 
@@ -173,15 +245,42 @@ Object oZoomEquipo is a cWebView
             Loop
 
             If (sLigaID <> "") Begin
+                WebSet psLigaID to sLigaID
                 Clear liga
-                Move sLigaID to liga.ID
+                Move (Integer(sLigaID)) to liga.ID
                 Send Find of oliga_DD EQ 1
-                
-                // Establecemos el valor en el DDO de equipo
-                Set Field_Changed_Value of oequipo_DD Field equipo.LigaID to sLigaID
+                Set Field_Changed_Value of oequipo_DD Field equipo.LigaID to (Integer(sLigaID))
+            End
+        End
+        Else Begin
+            If (NavigateData.sRowId <> "") Begin
+                Move (DeserializeRowID(NavigateData.sRowId)) to riEquipo
+                If (not(IsNullRowID(riEquipo))) Begin
+                    Send FindByRowId of oequipo_DD equipo.File_Number riEquipo
+                End
+            End
+
+            If (not(HasRecord(oequipo_DD))) Begin
+                Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+                For iIndex from 0 to (iCount - 1)
+                    If (NavigateData.NamedValues[iIndex].sName = "EquipoID" or NavigateData.NamedValues[iIndex].sName = "ID") Begin
+                        Move NavigateData.NamedValues[iIndex].sValue to sEquipoID
+                    End
+                Loop
+
+                If (sEquipoID <> "" and sEquipoID <> "0") Begin
+                    Clear equipo
+                    Move (Integer(sEquipoID)) to equipo.ID
+                    Send Find of oequipo_DD EQ 1
+                End
             End
         End
 
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
         Send SetActionButtons
     End_Procedure
 

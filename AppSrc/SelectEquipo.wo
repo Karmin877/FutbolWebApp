@@ -12,6 +12,9 @@ Use cWebColumn.pkg
 Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 
+Open liga
+Open equipo
+
 Object oSelectEquipo is a cWebView
     Set psCaption to "Equipos"
     Set peWebViewStyle to wvsDrilldown
@@ -41,31 +44,92 @@ Object oSelectEquipo is a cWebView
         Object oequipoID is a cWebColumn
             Entry_Item equipo.ID
             Set psCaption to "ID"
-            Set piWidth to 100
+            Set piWidth to 80
         End_Object 
 
         Object oequipoNombre is a cWebColumn
             Entry_Item equipo.Nombre
             Set psCaption to "Nombre"
-            Set piWidth to 1201
+            Set piWidth to 500
         End_Object 
 
         Object oligaNombre is a cWebColumn
             Entry_Item liga.Nombre
             Set psCaption to "Liga"
-            Set piWidth to 1000
+            Set piWidth to 300
         End_Object 
 
-        Object oDetailButton is a cWebColumnButton
-            Set psCaption to "btn"
+        // Boton 1: Editar / Detalle de Equipo
+        Object oZoomButton is a cWebColumnButton
+            Set psCaption to "Editar"
+            Set piWidth to 45
+            Set pbFixedWidth to True
+            Set pbResizable to False
+            Set piListRowSpan to 1
+            Set psBtnCssClass to "WebButtonIcon WebIcon_Edit"
+            Set peAlign to alignRight
+
+            WebRegisterPath ntNavigateForward oZoomEquipo
+
+            Procedure OnClick
+                Send NavigateForward of oZoomEquipo Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                RowID riRowId
+
+                Move False to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
+
+                // Obtencion y serializacion valida del RowID
+                Move (GetRowId(equipo.File_Number)) to riRowId
+                If (not(IsNullRowID(riRowId))) Begin
+                    Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+                End
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "EquipoID" to NavigateData.NamedValues[iElements].sName
+                Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
+
+        // Boton 2: Ver Jugadores del equipo
+        Object oJugadoresButton is a cWebColumnButton
+            Set psCaption to "Jugadores"
+            Set piWidth to 45
+            Set pbFixedWidth to True
+            Set pbResizable to False
+            Set piListRowSpan to 1
+            Set psBtnCssClass to "WebButtonIcon WebIcon_User"
+            Set peAlign to alignRight
+
+            WebRegisterPath ntNavigateForward oSelectJugador
+
+            Procedure OnClick
+                Send NavigateForward of oSelectJugador Self
+            End_Procedure
+
+            Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
+                Move True to NavigateData.bReadOnly
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "EquipoID" to NavigateData.NamedValues[iElements].sName
+                Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
+
+        // Boton 3: Ver Entrenador del equipo
+        Object oEntrenadorButton is a cWebColumnButton
+            Set psCaption to "Entrenador"
             Set piWidth to 45
             Set pbFixedWidth to True
             Set pbResizable to False
             Set piListRowSpan to 1
             Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
             Set peAlign to alignRight
-            
-            // Registramos la ruta hacia la vista de entrenador
+
             WebRegisterPath ntNavigateForward oSelectEntrenador
 
             Procedure OnClick
@@ -73,12 +137,16 @@ Object oSelectEquipo is a cWebView
             End_Procedure
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
                 Move True to NavigateData.bReadOnly
-            End_Procedure
-        End_Object 
 
-        // Registramos la navegacion hacia la lista de jugadores
-        WebRegisterPath ntNavigateForward oSelectJugador
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "EquipoID" to NavigateData.NamedValues[iElements].sName
+                Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
+
+        WebRegisterPath ntNavigateForward oZoomEquipo
 
         Procedure OnRowClick String sRowId
             tWebNavigateData NavigateData
@@ -94,18 +162,25 @@ Object oSelectEquipo is a cWebView
                     Case Break
 
                 Case Else
-                    Send NavigateForward of oSelectJugador Self
+                    Send NavigateForward of oZoomEquipo Self
             Case End
         End_Procedure
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
             Integer iElements
-            Move True to NavigateData.bReadOnly
+            RowID riRowId
 
-            // Pasamos el EquipoID seleccionado hacia SelectJugador
+            Move False to NavigateData.bNewRecord
+            Move False to NavigateData.bReadOnly
+
+            Move (GetRowId(equipo.File_Number)) to riRowId
+            If (not(IsNullRowID(riRowId))) Begin
+                Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+            End
+
             Move (SizeOfArray(NavigateData.NamedValues)) to iElements
             Move "EquipoID" to NavigateData.NamedValues[iElements].sName
-            Move equipo.ID  to NavigateData.NamedValues[iElements].sValue
+            Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
@@ -125,7 +200,6 @@ Object oSelectEquipo is a cWebView
             Set psCSSClass to "WebClearMenuItem"
             Set psCaption to "New"
 
-            // Registramos la ruta hacia ZoomEquipo para altas
             WebRegisterPath ntNavigateForward oZoomEquipo
 
             Procedure OnClick
@@ -135,31 +209,20 @@ Object oSelectEquipo is a cWebView
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
                 Integer iElements
                 Move True to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
                 
-                // Asignamos el par Clave/Valor en el array NamedValues de NavigateData
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "LigaID" to NavigateData.NamedValues[iElements].sName
-                Move liga.ID  to NavigateData.NamedValues[iElements].sValue
+                Move (String(liga.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
     End_Object 
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
         WebSet pbRender of oNewButton to True
-        WebSet pbRender of oDetailButton to True
-
-        Case Begin
-            Case (NavigateData.eNavigateType = nfFromParent)
-                Case Break
-
-            Case (NavigateData.eNavigateType = nfFromChild)
-                Case Break
-
-            Case (NavigateData.eNavigateType = nfFromMain)
-                Case Break
-
-            Case Else
-        Case End
+        WebSet pbRender of oZoomButton to True
+        WebSet pbRender of oJugadoresButton to True
+        WebSet pbRender of oEntrenadorButton to True
     End_Procedure
 
 End_Object

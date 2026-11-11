@@ -11,13 +11,17 @@ Class cjugadorDataDictionary is a DataDictionary
         Set Main_File to jugador.File_Number
 
         Set Add_Server_File to equipo.File_Number
-
         Set Add_Client_File to jugadorposicion.File_Number
 
+        // Limpieza automatica en cascada de las asignaciones intermedias del jugador
+        Set Cascade_Delete_State to True
+
+        // Permitir lookup de equipo sin bloquear el control hijo
         Set Foreign_Field_Option DD_KEYFIELD DD_NOPUT to True
         Set Foreign_Field_Option DD_KEYFIELD DD_FINDREQ to True
         Set Foreign_Field_Option DD_INDEXFIELD DD_NOPUT to True
-        Set Foreign_Field_Option DD_DEFAULT DD_DISPLAYONLY to True
+        Set Foreign_Field_Option DD_INDEXFIELD DD_FINDREQ to True
+        Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
 

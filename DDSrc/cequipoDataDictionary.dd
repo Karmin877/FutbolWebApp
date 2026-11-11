@@ -16,11 +16,42 @@ Class cequipoDataDictionary is a DataDictionary
         Set Add_Client_File to entrenador.File_Number
         Set Add_Client_File to jugador.File_Number
 
+        // Permitir lookup y seleccion en campos foraneos sin bloquear como DisplayOnly
         Set Foreign_Field_Option DD_KEYFIELD DD_NOPUT to True
         Set Foreign_Field_Option DD_KEYFIELD DD_FINDREQ to True
         Set Foreign_Field_Option DD_INDEXFIELD DD_NOPUT to True
-        Set Foreign_Field_Option DD_DEFAULT DD_DISPLAYONLY to True
+        Set Foreign_Field_Option DD_INDEXFIELD DD_FINDREQ to True
+        Set Foreign_Field_Option DD_DEFAULT DD_NOPUT to True
 
     End_Procedure
+
+    // Validacion previa al borrado para evitar el error 1451 de MySQL
+    Function Validate_Delete Returns Integer
+        Integer iRet iEquipoID
+        Forward Get Validate_Delete to iRet
+        If (iRet <> 0) Function_Return iRet
+
+        Move equipo.ID to iEquipoID
+
+        // 1. Verificar jugadores vinculados (Index.3: uqJugadorEquipoID)
+        Clear jugador
+        Move iEquipoID to jugador.EquipoID
+        Find ge jugador by Index.3
+        If (Found and jugador.EquipoID = iEquipoID) Begin
+            Send UserError "No se puede eliminar el equipo porque tiene jugadores asignados. Reasigne o elimine los jugadores primero." "Restricción de Borrado"
+            Function_Return 1
+        End
+
+        // 2. Verificar si existe un entrenador asignado (Index.3: uqEntrenadorEquipo)
+        Clear entrenador
+        Move iEquipoID to entrenador.EquipoID
+        Find ge entrenador by Index.3
+        If (Found and entrenador.EquipoID = iEquipoID) Begin
+            Send UserError "No se puede eliminar el equipo porque tiene un entrenador asignado." "Restricción de Borrado"
+            Function_Return 1
+        End
+
+        Function_Return 0
+    End_Function
 
 End_Class
