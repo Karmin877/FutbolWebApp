@@ -7,10 +7,19 @@ Use cWebPanel.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
 Use cWebForm.pkg
+Use cWebButton.pkg
 
 Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 Use cjugadorDataDictionary.dd
+Use cposicionDataDictionary.dd
+Use cjugadorposicionDataDictionary.dd
+
+Open liga
+Open equipo
+Open jugador
+Open posicion
+Open jugadorposicion
 
 Object oZoomJugador is a cWebView
     Set piColumnCount to 12
@@ -21,6 +30,10 @@ Object oZoomJugador is a cWebView
     Set Verify_Save_Msg to 0
     Set piMaxWidth to 1024
 
+    { WebProperty=Server }
+    Property String psEquipoID ""
+
+    // Servidores padre
     Object oliga_DD is a cligaDataDictionary
     End_Object
 
@@ -28,16 +41,32 @@ Object oZoomJugador is a cWebView
         Set DDO_Server to oliga_DD
     End_Object
 
+    // DDO Principal
     Object ojugador_DD is a cjugadorDataDictionary
         Set DDO_Server to oequipo_DD
 
-        // Inyeccion obligatoria de FK antes del INSERT en MySQL
         Procedure Creating
+            String sEqID
             Forward Send Creating
+            
+            WebGet psEquipoID of oZoomJugador to sEqID
             If (equipo.ID <> 0) Begin
                 Move equipo.ID to jugador.EquipoID
             End
+            Else If (sEqID <> "" and sEqID <> "0") Begin
+                Move (Integer(sEqID)) to jugador.EquipoID
+            End
         End_Procedure
+    End_Object
+
+    // Clientes requeridos para eliminacion en cascada (jugador -> jugadorposicion)
+    Object oposicion_DD is a cposicionDataDictionary
+    End_Object
+
+    Object ojugadorposicion_DD is a cjugadorposicionDataDictionary
+        Set DDO_Server to ojugador_DD
+        Set DDO_Server to oposicion_DD
+        Set Constrain_File to jugador.File_Number
     End_Object
 
     Set Main_DD to ojugador_DD
@@ -56,7 +85,6 @@ Object oZoomJugador is a cWebView
             Set pbReadOnly to True
         End_Object
 
-        // Campo oculto para sincronizar jugador.EquipoID en el cliente web
         Object ojugadorEquipoID is a cWebForm
             Entry_Item jugador.EquipoID
             Set pbRender to False
@@ -92,6 +120,18 @@ Object oZoomJugador is a cWebView
                 Send NavigatePath
             End_Procedure
         End_Object
+
+        // Boton directo visible en panel
+        Object oBtnEliminarDirecto is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "ELIMINAR ESTE JUGADOR"
+            Set psCSSClass to "WebButtonAlert"
+
+            Procedure OnClick
+                Send Request_Delete of oZoomJugador
+            End_Procedure
+        End_Object
     End_Object
 
     Object oActionGroup is a cWebMenuGroup
@@ -118,7 +158,7 @@ Object oZoomJugador is a cWebView
         Object oDeleteBtn is a cWebMenuItem
             Set psCSSClass to "WebDeleteMenuItem"
             Set psCaption to "Delete"
-            Set peActionDisplay to adMenu
+            Set peActionDisplay to adBoth
 
             Procedure OnClick
                 Send Request_Delete
@@ -135,10 +175,9 @@ Object oZoomJugador is a cWebView
             End_Procedure
         End_Object
 
-        // Boton para gestionar las posiciones del jugador activo
         Object oPosicionesBtn is a cWebMenuItem
             Set psCaption to "Posiciones"
-            Set peActionDisplay to adMenu
+            Set peActionDisplay to adBoth
 
             WebRegisterPath ntNavigateForward oSelectJugadorPosicion
 
@@ -152,35 +191,41 @@ Object oZoomJugador is a cWebView
 
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "JugadorID" to NavigateData.NamedValues[iElements].sName
-                Move jugador.ID  to NavigateData.NamedValues[iElements].sValue
+                Move (String(jugador.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object
     End_Object
 
     Procedure SetActionButtons
         tWebNavigateData NavigateData
-        Boolean bHasRecord
+        Boolean bHasRecord bIsNew
         Handle hoDD
 
         Get Server to hoDD
         Get GetNavigateData to NavigateData
         Get HasRecord of hoDD to bHasRecord
+        Move (NavigateData.bNewRecord) to bIsNew
+
+        If (bIsNew) Begin
+            Move False to bHasRecord
+        End
+        Else Begin
+            If (jugador.ID <> 0) Move True to bHasRecord
+        End
 
         WebSet pbRender of oEditBtn to False
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
-        WebSet pbRender of oDeleteBtn to False
-        WebSet pbRender of oPosicionesBtn to False
+        WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oBtnEliminarDirecto to bHasRecord
+        WebSet pbRender of oPosicionesBtn to bHasRecord
 
-        If (NavigateData.bReadOnly) Begin
+        If (NavigateData.bReadOnly and not(bIsNew)) Begin
             WebSet pbRender of oEditBtn to True
-            WebSet pbRender of oPosicionesBtn to bHasRecord
         End
         Else Begin
             WebSet pbRender of oSaveBtn to True
             WebSet pbRender of oCancelChangesBtn to True
-            WebSet pbRender of oDeleteBtn to bHasRecord
-            WebSet pbRender of oPosicionesBtn to bHasRecord
         End
     End_Procedure
 
@@ -192,9 +237,22 @@ Object oZoomJugador is a cWebView
         Send NavigateClose Self
     End_Procedure
 
+    // Sincroniza el equipo elegido mediante el prompt button
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+
+        If (equipo.ID <> 0) Begin
+            Send Find of oequipo_DD EQ 1
+            WebSet psEquipoID to (String(equipo.ID))
+            Set Field_Changed_Value of ojugador_DD Field jugador.EquipoID to equipo.ID
+        End
+        Send SetActionButtons
+    End_Procedure
+
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        RowID riJugador
         Integer iIndex iCount
-        String sEquipoID
+        String sEquipoID sJugadorID
 
         Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
 
@@ -208,15 +266,45 @@ Object oZoomJugador is a cWebView
                 End
             Loop
 
-            If (sEquipoID <> "") Begin
+            If (sEquipoID <> "" and sEquipoID <> "0") Begin
+                WebSet psEquipoID to sEquipoID
                 Clear equipo
-                Move sEquipoID to equipo.ID
+                Move (Integer(sEquipoID)) to equipo.ID
                 Send Find of oequipo_DD EQ 1
+                Set Field_Changed_Value of ojugador_DD Field jugador.EquipoID to (Integer(sEquipoID))
+            End
+        End
+        Else Begin
+            // Carga por RowId serializado
+            If (NavigateData.sRowId <> "") Begin
+                Move (DeserializeRowID(NavigateData.sRowId)) to riJugador
+                If (not(IsNullRowID(riJugador))) Begin
+                    Send FindByRowId of ojugador_DD jugador.File_Number riJugador
+                End
+            End
 
-                Set Field_Changed_Value of ojugador_DD Field jugador.EquipoID to sEquipoID
+            // Fallback por JugadorID
+            If (not(HasRecord(ojugador_DD))) Begin
+                Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+                For iIndex from 0 to (iCount - 1)
+                    If (NavigateData.NamedValues[iIndex].sName = "JugadorID" or NavigateData.NamedValues[iIndex].sName = "ID") Begin
+                        Move NavigateData.NamedValues[iIndex].sValue to sJugadorID
+                    End
+                Loop
+
+                If (sJugadorID <> "" and sJugadorID <> "0") Begin
+                    Clear jugador
+                    Move (Integer(sJugadorID)) to jugador.ID
+                    Send Find of ojugador_DD EQ 1
+                End
             End
         End
 
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
         Send SetActionButtons
     End_Procedure
 

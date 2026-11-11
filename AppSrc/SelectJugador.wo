@@ -13,6 +13,10 @@ Use cligaDataDictionary.dd
 Use cequipoDataDictionary.dd
 Use cjugadorDataDictionary.dd
 
+Open liga
+Open equipo
+Open jugador
+
 Object oSelectJugador is a cWebView
     Set psCaption to "Jugadores"
     Set peWebViewStyle to wvsDrilldown
@@ -53,28 +57,29 @@ Object oSelectJugador is a cWebView
         Object ojugadorNombre is a cWebColumn
             Entry_Item jugador.Nombre
             Set psCaption to "Nombre"
-            Set piWidth to 500
+            Set piWidth to 450
         End_Object 
 
         Object ojugadorApellido is a cWebColumn
             Entry_Item jugador.Apellido
             Set psCaption to "Apellido"
-            Set piWidth to 500
+            Set piWidth to 450
         End_Object 
 
         Object oequipoNombre is a cWebColumn
             Entry_Item equipo.Nombre
             Set psCaption to "Equipo"
-            Set piWidth to 600
+            Set piWidth to 500
         End_Object 
 
+        // Boton para editar/ver detalle del jugador seleccionado
         Object oDetailButton is a cWebColumnButton
-            Set psCaption to "btn"
+            Set psCaption to "Editar"
             Set piWidth to 45
             Set pbFixedWidth to True
             Set pbResizable to False
             Set piListRowSpan to 1
-            Set psBtnCssClass to "WebButtonIcon WebIcon_Info"
+            Set psBtnCssClass to "WebButtonIcon WebIcon_Edit"
             Set peAlign to alignRight
 
             WebRegisterPath ntNavigateForward oZoomJugador
@@ -84,7 +89,20 @@ Object oSelectJugador is a cWebView
             End_Procedure
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
-                Move True to NavigateData.bReadOnly
+                Integer iElements
+                RowID riRowId
+
+                Move False to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
+
+                Move (GetRowId(jugador.File_Number)) to riRowId
+                If (not(IsNullRowID(riRowId))) Begin
+                    Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+                End
+
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+                Move (String(jugador.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
 
@@ -109,7 +127,20 @@ Object oSelectJugador is a cWebView
         End_Procedure
 
         Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
-            Move True to NavigateData.bReadOnly
+            Integer iElements
+            RowID riRowId
+
+            Move False to NavigateData.bNewRecord
+            Move False to NavigateData.bReadOnly
+
+            Move (GetRowId(jugador.File_Number)) to riRowId
+            If (not(IsNullRowID(riRowId))) Begin
+                Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+            End
+
+            Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+            Move "JugadorID" to NavigateData.NamedValues[iElements].sName
+            Move (String(jugador.ID)) to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
     End_Object 
@@ -138,10 +169,11 @@ Object oSelectJugador is a cWebView
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
                 Integer iElements
                 Move True to NavigateData.bNewRecord
+                Move False to NavigateData.bReadOnly
 
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "EquipoID" to NavigateData.NamedValues[iElements].sName
-                Move equipo.ID  to NavigateData.NamedValues[iElements].sValue
+                Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
     End_Object 
@@ -159,9 +191,9 @@ Object oSelectJugador is a cWebView
             End
         Loop
 
-        If (sEquipoID <> "") Begin
+        If (sEquipoID <> "" and sEquipoID <> "0") Begin
             Clear equipo
-            Move sEquipoID to equipo.ID
+            Move (Integer(sEquipoID)) to equipo.ID
             Send Find of oequipo_DD EQ 1
         End
 
