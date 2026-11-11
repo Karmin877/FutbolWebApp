@@ -25,6 +25,15 @@ Object oZoomEquipo is a cWebView
 
     Object oequipo_DD is a cequipoDataDictionary
         Set DDO_Server to oliga_DD
+
+        // Garantiza que antes de guardar el registro en MySQL,
+        // la clave foranea LigaID tome siempre el ID de la liga activa
+        Procedure Creating
+            Forward Send Creating
+            If (liga.ID <> 0) Begin
+                Move liga.ID to equipo.LigaID
+            End
+        End_Procedure
     End_Object 
 
     Set Main_DD to oequipo_DD
@@ -43,6 +52,12 @@ Object oZoomEquipo is a cWebView
             Set pbReadOnly to True
         End_Object 
 
+        // Campo oculto para mantener sincronizada la Foreign Key en el cliente web
+        Object oequipoLigaID is a cWebForm
+            Entry_Item equipo.LigaID
+            Set pbRender to False
+        End_Object
+
         Object oequipoNombre is a cWebForm
             Entry_Item equipo.Nombre
             Set piColumnSpan to 12
@@ -59,7 +74,6 @@ Object oZoomEquipo is a cWebView
             Set psLabel to "Liga"
             Set pbPromptButton to True
 
-            // Permite seleccionar la liga padre mediante lookup
             WebRegisterPath ntNavigateForward oSelectLiga
 
             Procedure OnPrompt
@@ -143,18 +157,30 @@ Object oZoomEquipo is a cWebView
     End_Procedure
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
-        Case Begin
-            Case (NavigateData.eNavigateType = nfFromMain)
-                Case Break
+        Integer iIndex iCount
+        String sLigaID
 
-            Case (NavigateData.eNavigateType = nfFromParent)
-                Case Break
+        Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
 
-            Case (NavigateData.eNavigateType = nfFromChild)
-                Case Break
+        If (NavigateData.bNewRecord) Begin
+            Send Request_Clear of oequipo_DD
 
-            Case Else
-        Case End
+            Move (SizeOfArray(NavigateData.NamedValues)) to iCount
+            For iIndex from 0 to (iCount - 1)
+                If (NavigateData.NamedValues[iIndex].sName = "LigaID") Begin
+                    Move NavigateData.NamedValues[iIndex].sValue to sLigaID
+                End
+            Loop
+
+            If (sLigaID <> "") Begin
+                Clear liga
+                Move sLigaID to liga.ID
+                Send Find of oliga_DD EQ 1
+                
+                // Establecemos el valor en el DDO de equipo
+                Set Field_Changed_Value of oequipo_DD Field equipo.LigaID to sLigaID
+            End
+        End
 
         Send SetActionButtons
     End_Procedure

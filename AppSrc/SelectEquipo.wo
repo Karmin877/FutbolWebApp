@@ -77,7 +77,7 @@ Object oSelectEquipo is a cWebView
             End_Procedure
         End_Object 
 
-        // Registramos la navegacion hacia la lista hija de jugadores
+        // Registramos la navegacion hacia la lista de jugadores
         WebRegisterPath ntNavigateForward oSelectJugador
 
         Procedure OnRowClick String sRowId
@@ -97,7 +97,7 @@ Object oSelectEquipo is a cWebView
                     Send NavigateClose Self
                     Case Break
 
-                Case Else // nfUndefined (cuando se entra directo desde el Dashboard o Menu)
+                Case Else
                     Send NavigateForward of oSelectJugador Self
             Case End
         End_Procedure
@@ -131,7 +131,13 @@ Object oSelectEquipo is a cWebView
             End_Procedure
 
             Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                Integer iElements
                 Move True to NavigateData.bNewRecord
+                
+                // Asignamos el par Clave/Valor en el array NamedValues de NavigateData
+                Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                Move "LigaID" to NavigateData.NamedValues[iElements].sName
+                Move liga.ID  to NavigateData.NamedValues[iElements].sValue
             End_Procedure
         End_Object 
     End_Object 
