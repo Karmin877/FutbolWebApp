@@ -60,7 +60,7 @@ Object oWebApp is a cWebApp
 
                         Procedure OnClick
                             Forward Send OnClick
-                                Send NavigatePath
+                            Send NavigatePath
                         End_Procedure
                     End_Object
                 End_Object
