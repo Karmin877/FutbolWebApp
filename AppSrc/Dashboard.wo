@@ -1,121 +1,219 @@
-﻿Use cWebView.pkg
+﻿// C:\DataFlex Projects\FutbolWebApp\AppSrc\Dashboard.wo
+// Dashboard
+//
+
+Use cWebView.pkg
 Use cWebPanel.pkg
-Use cWebForm.pkg
-Use cWebButton.pkg
 Use cWebGroup.pkg
-Use cWebSpacer.pkg
 Use cWebHtmlBox.pkg
-Use cWebMenuGroup.pkg
-Use cWebMenuItem.pkg
-Use cWebLabel.pkg
-Use cWebList.pkg
-Use cWebColumn.pkg
-Use cposicionDataDictionary.dd
+
+Open liga
+Open equipo
+Open jugador
+Open entrenador
 
 Object oDashboard is a cWebView
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
-    // Add a DDO Structure 
-    //
-    // There is no need to synchronize a DD structure on the client so we do
-    // not set the Server property or send ADDOStructure. We will simply use
-    // DDO's to mine data and generate HTML for our cWebHTMLBox objects.
-    // It is the HTML in these objects that is sent to the client each time 
-    // this page is shown.
-    //
-    // Also, it is important for the drill-down Navigation interface that we
-    // do not set the Server property to some DDO because this will affect 
-    // constraints in the next view that we navigate to.
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-
     Set piMaxWidth to 1024
-    
-    Set psCaption to "Dashboard"
+    Set psCaption to "Panel Principal"
     Set peViewType to vtUndefined
     Set pbShowCaption to False
     Set psCSSClass to "Dashboard"
-    
+    Set pbServerOnShow to True
+
+    Function CountLigas Returns Integer
+        Integer iCount
+        Move 0 to iCount
+        Clear liga
+        Repeat
+            Find gt liga by 1
+            If (not(Found)) Break
+            Increment iCount
+        Until False
+        Function_Return iCount
+    End_Function
+
+    Function CountEquipos Returns Integer
+        Integer iCount
+        Move 0 to iCount
+        Clear equipo
+        Repeat
+            Find gt equipo by 1
+            If (not(Found)) Break
+            Increment iCount
+        Until False
+        Function_Return iCount
+    End_Function
+
+    Function CountJugadores Returns Integer
+        Integer iCount
+        Move 0 to iCount
+        Clear jugador
+        Repeat
+            Find gt jugador by 1
+            If (not(Found)) Break
+            Increment iCount
+        Until False
+        Function_Return iCount
+    End_Function
+
+    Function CountEntrenadores Returns Integer
+        Integer iCount
+        Move 0 to iCount
+        Clear entrenador
+        Repeat
+            Find gt entrenador by 1
+            If (not(Found)) Break
+            Increment iCount
+        Until False
+        Function_Return iCount
+    End_Function
+
     Object oWebMainPanel is a cWebPanel
         Set piColumnCount to 24
-        
-        // - - - - - - - - - - - - - - -
-        // Main Panel's Responsive Rules
-        // - - - - - - - - - - - - - - -
         WebSetResponsive piColumnCount rmMobile to 1
-        WebSetResponsive piColumnCount rmTabletPortrait to 16
-    
+        WebSetResponsive piColumnCount rmTabletPortrait to 12
+
         Object oTiles_grp is a cWebGroup
-            Set piColumnSpan to 8
+            Set piColumnSpan to 24
             Set pbShowBorder to False
             Set pbShowCaption to False
             Set piColumnCount to 12
-            
             Set psCSSClass to "TilesGroup"
-    
+
             Object oWelcomeTile is a cWebHtmlBox
-                Set piColumnSpan to 6
+                Set piColumnSpan to 12
                 Set psCSSClass to "Tile Light"
-                Set psHtml to '<div Class="WebCon_Sizer"><div class="Tile_Title">Welcome</div><div Class="Tile_Subtitle">--</div></div>'
-    
-                Procedure OnLoad
-                    Send UpdateHTML ('<div class="WebCon_Sizer">' + ;
-                                     '<div class="Tile_Title">Welcome</div>' +;
-                                     '<div class="Tile_Subtitle">' - htmlEncode(psUserName(ghoWebSessionManager)) - '</div>' +;
-                                     '</div>')
+                Set psHtml to '<div class="WebCon_Sizer"><div class="Tile_Title">Gestión de Fútbol</div><div class="Tile_Subtitle">Bienvenido</div></div>'
+
+                Procedure RefreshTile
+                    String sUser sHtml
+                    Move "" to sUser
+                    If (ghoWebSessionManager <> 0) Begin
+                        Get psUserName of ghoWebSessionManager to sUser
+                        Get htmlEncode sUser to sUser
+                    End
+                    If (sUser = "") Move "Usuario" to sUser
+
+                    Move ('<div class="WebCon_Sizer">' + ;
+                          '<div class="Tile_Title">Panel de Control</div>' + ;
+                          '<div class="Tile_Subtitle">Bienvenido, ' + sUser + '</div>' + ;
+                          '</div>') to sHtml
+
+                    Send UpdateHTML sHtml
                 End_Procedure
-                
             End_Object
-    
-            Object oTile2 is a cWebHtmlBox
+
+            Object oTileLigas is a cWebHtmlBox
                 Set pbServerOnClick to True
                 Set piColumnSpan to 6
-                Set piColumnIndex to 6
+                Set piColumnIndex to 0
                 Set psCSSClass to "Tile LightAlternate"
-                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div Class="Tile_Title">Ligas</div><div class="Tile_Subtitle">Gestión de ligas</div></div>'
-                                
+                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Ligas</div><div class="Tile_Subtitle">0 registradas</div></div>'
+
                 WebRegisterPath ntNavigateForward oSelectLiga
-                
+
+                Procedure RefreshTile
+                    Integer iTotal
+                    String sHtml
+                    Get CountLigas of oDashboard to iTotal
+                    Move ('<div class="WebCon_Sizer" data-ServerOnClick="openview">' + ;
+                          '<div class="Tile_Title">Ligas</div>' + ;
+                          '<div class="Tile_Subtitle">' + String(iTotal) + ' registradas</div>' + ;
+                          '</div>') to sHtml
+                    Send UpdateHTML sHtml
+                End_Procedure
+
                 Procedure OnClick String sId String sParam
                     Send NavigatePath
                 End_Procedure
-                
             End_Object
-    
-            Object oTile3 is a cWebHtmlBox
+
+            Object oTileEquipos is a cWebHtmlBox
                 Set pbServerOnClick to True
                 Set piColumnSpan to 6
                 Set piColumnIndex to 6
                 Set psCSSClass to "Tile LightAlternate"
-                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div Class="Tile_Title">Equipos</div><div class="Tile_Subtitle">Gestión de equipos</div></div>'
-                         
-         WebRegisterPath ntNavigateForward oSelectEquipo
-                
+                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Equipos</div><div class="Tile_Subtitle">0 registrados</div></div>'
+
+                WebRegisterPath ntNavigateForward oSelectEquipo
+
+                Procedure RefreshTile
+                    Integer iTotal
+                    String sHtml
+                    Get CountEquipos of oDashboard to iTotal
+                    Move ('<div class="WebCon_Sizer" data-ServerOnClick="openview">' + ;
+                          '<div class="Tile_Title">Equipos</div>' + ;
+                          '<div class="Tile_Subtitle">' + String(iTotal) + ' registrados</div>' + ;
+                          '</div>') to sHtml
+                    Send UpdateHTML sHtml
+                End_Procedure
+
                 Procedure OnClick String sId String sParam
                     Send NavigatePath
                 End_Procedure
-                
             End_Object
-    
-            Object oTile4 is a cWebHtmlBox
+
+            Object oTileJugadores is a cWebHtmlBox
+                Set pbServerOnClick to True
+                Set piColumnSpan to 6
+                Set piColumnIndex to 0
+                Set psCSSClass to "Tile DarkAlternate"
+                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Jugadores</div><div class="Tile_Subtitle">0 registrados</div></div>'
+
+                WebRegisterPath ntNavigateForward oSelectJugador
+
+                Procedure RefreshTile
+                    Integer iTotal
+                    String sHtml
+                    Get CountJugadores of oDashboard to iTotal
+                    Move ('<div class="WebCon_Sizer" data-ServerOnClick="openview">' + ;
+                          '<div class="Tile_Title">Jugadores</div>' + ;
+                          '<div class="Tile_Subtitle">' + String(iTotal) + ' registrados</div>' + ;
+                          '</div>') to sHtml
+                    Send UpdateHTML sHtml
+                End_Procedure
+
+                Procedure OnClick String sId String sParam
+                    Send NavigatePath
+                End_Procedure
+            End_Object
+
+            Object oTileEntrenadores is a cWebHtmlBox
                 Set pbServerOnClick to True
                 Set piColumnSpan to 6
                 Set piColumnIndex to 6
                 Set psCSSClass to "Tile DarkAlternate"
-                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div Class="Tile_Title">Tile 4</div><div class="Tile_Subtitle"></div></div>'
-            
-                // WebRegisterPath ntNavigateForwardCustom oYourViewName
-                
+                Set psHtml to '<div class="WebCon_Sizer" data-ServerOnClick="openview"><div class="Tile_Title">Entrenadores</div><div class="Tile_Subtitle">0 registrados</div></div>'
+
+                WebRegisterPath ntNavigateForward oSelectEntrenador
+
+                Procedure RefreshTile
+                    Integer iTotal
+                    String sHtml
+                    Get CountEntrenadores of oDashboard to iTotal
+                    Move ('<div class="WebCon_Sizer" data-ServerOnClick="openview">' + ;
+                          '<div class="Tile_Title">Entrenadores</div>' + ;
+                          '<div class="Tile_Subtitle">' + String(iTotal) + ' registrados</div>' + ;
+                          '</div>') to sHtml
+                    Send UpdateHTML sHtml
+                End_Procedure
+
                 Procedure OnClick String sId String sParam
                     Send NavigatePath
                 End_Procedure
-                
             End_Object
+
         End_Object
-    
+
     End_Object
-    
-    Procedure OnBeforeShow
-        // Each time this view is shown we will update the appropriate information.
+
+    Procedure OnShow
+        Forward Send OnShow
+        Send RefreshTile of (oWelcomeTile(oTiles_grp(oWebMainPanel(Self))))
+        Send RefreshTile of (oTileLigas(oTiles_grp(oWebMainPanel(Self))))
+        Send RefreshTile of (oTileEquipos(oTiles_grp(oWebMainPanel(Self))))
+        Send RefreshTile of (oTileJugadores(oTiles_grp(oWebMainPanel(Self))))
+        Send RefreshTile of (oTileEntrenadores(oTiles_grp(oWebMainPanel(Self))))
     End_Procedure
 
 End_Object
