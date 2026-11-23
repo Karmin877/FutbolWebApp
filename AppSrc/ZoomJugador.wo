@@ -121,7 +121,7 @@ Object oZoomJugador is a cWebView
             End_Procedure
         End_Object
 
-        // Boton directo en panel para gestionar posiciones del jugador
+        // Boton directo en panel para gestionar posiciones del jugador (N:M)
         Object oBtnVerPosiciones is a cWebButton
             Set piColumnSpan to 12
             Set piColumnIndex to 0
@@ -141,6 +141,20 @@ Object oZoomJugador is a cWebView
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "JugadorID" to NavigateData.NamedValues[iElements].sName
                 Move (String(jugador.ID)) to NavigateData.NamedValues[iElements].sValue
+            End_Procedure
+        End_Object
+
+        // Navegacion Undefined (Sprint 2): Boton directo desde ZoomJugador hacia SelectPosicion
+        Object oBtnCatalogoPosiciones is a cWebButton
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set psCaption to "VER CATÁLOGO DE POSICIONES"
+            Set psCSSClass to "WebButtonDefault"
+
+            WebRegisterPath ntNavigateForward oSelectPosicion
+
+            Procedure OnClick
+                Send NavigatePath
             End_Procedure
         End_Object
 
@@ -242,8 +256,9 @@ Object oZoomJugador is a cWebView
         WebSet pbRender of oDeleteBtn to bHasRecord
         WebSet pbRender of oBtnEliminarDirecto to bHasRecord
 
-        // Mostrar boton de posiciones solo si el jugador ya existe guardado
+        // Mostrar botones de posiciones solo si el jugador ya existe guardado
         WebSet pbRender of oBtnVerPosiciones to bHasRecord
+        WebSet pbRender of oBtnCatalogoPosiciones to bHasRecord
         WebSet pbRender of oPosicionesBtn to bHasRecord
 
         If (NavigateData.bReadOnly and not(bIsNew)) Begin
