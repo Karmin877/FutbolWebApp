@@ -4,6 +4,9 @@
 
 Use cWebView.pkg
 Use cWebPanel.pkg
+Use cWebGroup.pkg
+Use cWebList.pkg
+Use cWebColumn.pkg
 Use cWebMenuGroup.pkg
 Use cWebMenuItem.pkg
 Use cWebForm.pkg
@@ -34,9 +37,9 @@ Object oZoomLiga is a cWebView
 
     // DDO Principal
     Object oliga_DD is a cligaDataDictionary
-    End_Object 
+    End_Object
 
-    // DDO Cliente de Liga
+    // DDO Cliente de Liga (constreñido para mostrar solo los equipos de la liga actual)
     Object oequipo_DD is a cequipoDataDictionary
         Set DDO_Server to oliga_DD
         Set Constrain_File to liga.File_Number
@@ -77,7 +80,7 @@ Object oZoomLiga is a cWebView
             Set peLabelPosition to lpTop
             Set psLabel to "ID"
             Set pbReadOnly to True
-        End_Object 
+        End_Object
 
         Object oligaNombre is a cWebForm
             Entry_Item liga.Nombre
@@ -85,7 +88,7 @@ Object oZoomLiga is a cWebView
             Set piColumnIndex to 0
             Set peLabelPosition to lpTop
             Set psLabel to "Nombre"
-        End_Object 
+        End_Object
 
         Object oligaPais is a cWebForm
             Entry_Item liga.Pais
@@ -93,7 +96,58 @@ Object oZoomLiga is a cWebView
             Set piColumnIndex to 0
             Set peLabelPosition to lpTop
             Set psLabel to "País"
-        End_Object 
+        End_Object
+
+        // Navegacion FromParent (Paso 2): Lista de equipos de esta liga embebida en ZoomLiga
+        Object oEquiposGroup is a cWebGroup
+            Set piColumnSpan to 12
+            Set piColumnIndex to 0
+            Set piColumnCount to 12
+            Set psCaption to "Equipos de esta Liga"
+
+            Object oEquiposList is a cWebList
+                Set Server to oequipo_DD
+                Set piColumnSpan to 12
+                Set piHeight to 220
+                Set pbServerOnRowClick to True
+                Set piSortColumn to 0
+
+                Object oEquipoID is a cWebColumn
+                    Entry_Item equipo.ID
+                    Set psCaption to "ID"
+                    Set piWidth to 80
+                End_Object
+
+                Object oEquipoNombre is a cWebColumn
+                    Entry_Item equipo.Nombre
+                    Set psCaption to "Equipo"
+                    Set piWidth to 400
+                End_Object
+
+                WebRegisterPath ntNavigateForward oZoomEquipo
+
+                Procedure OnRowClick String sRowId
+                    Send NavigatePath
+                End_Procedure
+
+                Procedure OnGetNavigateForwardData tWebNavigateData ByRef NavigateData Handle hoToView
+                    Integer iElements
+                    RowID riRowId
+
+                    Move False to NavigateData.bNewRecord
+                    Move False to NavigateData.bReadOnly
+
+                    Move (GetRowId(equipo.File_Number)) to riRowId
+                    If (not(IsNullRowID(riRowId))) Begin
+                        Move (SerializeRowID(riRowId)) to NavigateData.sRowId
+                    End
+
+                    Move (SizeOfArray(NavigateData.NamedValues)) to iElements
+                    Move "EquipoID" to NavigateData.NamedValues[iElements].sName
+                    Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
+                End_Procedure
+            End_Object
+        End_Object
 
         // Boton directo en panel para eliminar
         Object oBtnEliminarDirecto is a cWebButton
@@ -106,7 +160,7 @@ Object oZoomLiga is a cWebView
                 Send Request_Delete of oZoomLiga
             End_Procedure
         End_Object
-    End_Object 
+    End_Object
 
     Object oActionGroup is a cWebMenuGroup
 
@@ -117,7 +171,7 @@ Object oZoomLiga is a cWebView
             Procedure OnClick
                 Send Request_Save
             End_Procedure
-        End_Object 
+        End_Object
 
         Object oEditBtn is a cWebMenuItem
             Set psCSSClass to "WebEditMenuItem"
@@ -127,7 +181,7 @@ Object oZoomLiga is a cWebView
                 Send ChangeEditMode True
                 Send SetActionButtons
             End_Procedure
-        End_Object 
+        End_Object
 
         Object oDeleteBtn is a cWebMenuItem
             Set psCSSClass to "WebDeleteMenuItem"
@@ -137,7 +191,7 @@ Object oZoomLiga is a cWebView
             Procedure OnClick
                 Send Request_Delete
             End_Procedure
-        End_Object 
+        End_Object
 
         Object oCancelChangesBtn is a cWebMenuItem
             Set psCSSClass to "WebIcon_Refresh"
@@ -147,8 +201,8 @@ Object oZoomLiga is a cWebView
             Procedure OnClick
                 Send RefreshRecord
             End_Procedure
-        End_Object 
-    End_Object 
+        End_Object
+    End_Object
 
     Procedure SetActionButtons
         tWebNavigateData NavigateData
@@ -171,6 +225,7 @@ Object oZoomLiga is a cWebView
         WebSet pbRender of oSaveBtn to False
         WebSet pbRender of oCancelChangesBtn to False
         WebSet pbRender of oDeleteBtn to bHasRecord
+        WebSet pbRender of oEquiposGroup to bHasRecord
         WebSet pbRender of oBtnEliminarDirecto to bHasRecord
 
         If (NavigateData.bReadOnly and not(bIsNew)) Begin
@@ -224,6 +279,13 @@ Object oZoomLiga is a cWebView
             End
         End
 
+        Send GridRefresh of oEquiposList
+        Send SetActionButtons
+    End_Procedure
+
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+        Send GridRefresh of oEquiposList
         Send SetActionButtons
     End_Procedure
 
