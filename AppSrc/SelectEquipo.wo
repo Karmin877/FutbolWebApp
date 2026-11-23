@@ -24,11 +24,11 @@ Object oSelectEquipo is a cWebView
     Set piMaxWidth to 1024
 
     Object oliga_DD is a cligaDataDictionary
-    End_Object 
+    End_Object
 
     Object oequipo_DD is a cequipoDataDictionary
         Set DDO_Server to oliga_DD
-    End_Object 
+    End_Object
 
     Set Main_DD to oequipo_DD
     Set Server  to oequipo_DD
@@ -45,19 +45,19 @@ Object oSelectEquipo is a cWebView
             Entry_Item equipo.ID
             Set psCaption to "ID"
             Set piWidth to 80
-        End_Object 
+        End_Object
 
         Object oequipoNombre is a cWebColumn
             Entry_Item equipo.Nombre
             Set psCaption to "Nombre"
             Set piWidth to 500
-        End_Object 
+        End_Object
 
         Object oligaNombre is a cWebColumn
             Entry_Item liga.Nombre
             Set psCaption to "Liga"
             Set piWidth to 300
-        End_Object 
+        End_Object
 
         // Boton 1: Editar / Detalle de Equipo
         Object oZoomButton is a cWebColumnButton
@@ -82,7 +82,6 @@ Object oSelectEquipo is a cWebView
                 Move False to NavigateData.bNewRecord
                 Move False to NavigateData.bReadOnly
 
-                // Obtencion y serializacion valida del RowID
                 Move (GetRowId(equipo.File_Number)) to riRowId
                 If (not(IsNullRowID(riRowId))) Begin
                     Move (SerializeRowID(riRowId)) to NavigateData.sRowId
@@ -183,7 +182,7 @@ Object oSelectEquipo is a cWebView
             Move (String(equipo.ID)) to NavigateData.NamedValues[iElements].sValue
         End_Procedure
 
-    End_Object 
+    End_Object
 
     Object oActionGroup is a cWebMenuGroup
 
@@ -194,7 +193,7 @@ Object oSelectEquipo is a cWebView
             Procedure OnClick
                 Send Search of oList
             End_Procedure
-        End_Object 
+        End_Object
 
         Object oNewButton is a cWebMenuItem
             Set psCSSClass to "WebClearMenuItem"
@@ -210,19 +209,52 @@ Object oSelectEquipo is a cWebView
                 Integer iElements
                 Move True to NavigateData.bNewRecord
                 Move False to NavigateData.bReadOnly
-                
+
                 Move (SizeOfArray(NavigateData.NamedValues)) to iElements
                 Move "LigaID" to NavigateData.NamedValues[iElements].sName
                 Move (String(liga.ID)) to NavigateData.NamedValues[iElements].sValue
             End_Procedure
-        End_Object 
-    End_Object 
+        End_Object
+
+    End_Object
 
     Procedure OnNavigateForward tWebNavigateData NavigateData Integer hoInvokingView Integer hoInvokingObject
+        Forward Send OnNavigateForward NavigateData hoInvokingView hoInvokingObject
+
         WebSet pbRender of oNewButton to True
         WebSet pbRender of oZoomButton to True
         WebSet pbRender of oJugadoresButton to True
         WebSet pbRender of oEntrenadorButton to True
+
+        Case Begin
+            Case (NavigateData.eNavigateType = nfFromParent)
+                WebSet psCaption to ("Equipos - " + Trim(liga.Nombre))
+                Set Constrain_File of oequipo_DD to liga.File_Number
+                Send Rebuild_Constraints of oequipo_DD
+                Send GridRefresh of oList
+                Case Break
+
+            Case (NavigateData.eNavigateType = nfFromChild)
+                WebSet psCaption to "Seleccionar Equipo"
+                Set Constrain_File of oequipo_DD to 0
+                Send Rebuild_Constraints of oequipo_DD
+                WebSet pbRender of oZoomButton to False
+                WebSet pbRender of oJugadoresButton to False
+                WebSet pbRender of oEntrenadorButton to False
+                Send GridRefresh of oList
+                Case Break
+
+            Case Else
+                WebSet psCaption to "Equipos"
+                Set Constrain_File of oequipo_DD to 0
+                Send Rebuild_Constraints of oequipo_DD
+                Send GridRefresh of oList
+        Case End
+    End_Procedure
+
+    Procedure OnNavigateBack tWebNavigateData NavigateData Handle hoInvokingView
+        Forward Send OnNavigateBack NavigateData hoInvokingView
+        Send GridRefresh of oList
     End_Procedure
 
 End_Object
